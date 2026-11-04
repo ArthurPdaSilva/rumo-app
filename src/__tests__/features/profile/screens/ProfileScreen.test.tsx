@@ -13,7 +13,12 @@ import { createTestDatabase } from "../../../helpers/createTestDatabase";
 
 let mockDb: ReturnType<typeof createTestDatabase>;
 
+const mockPush = jest.fn();
+
 jest.mock("expo-sqlite", () => ({ useSQLiteContext: () => mockDb }));
+jest.mock("expo-router", () => ({
+	useRouter: () => ({ push: mockPush, back: jest.fn(), replace: jest.fn() }),
+}));
 
 describe("ProfileScreen", () => {
 	beforeEach(async () => {
@@ -142,16 +147,11 @@ describe("ProfileScreen", () => {
 		failing.mockRestore();
 	});
 
-	test("o botão de importar avisa que a etapa ainda não existe", async () => {
+	test("o botão abre a tela de importação e backup", async () => {
 		await render(<ProfileScreen />);
 
-		await fireEvent.press(screen.getByText("Escolher arquivo"));
+		await fireEvent.press(screen.getByText("Abrir importação e backup"));
 
-		expect(Toast.show).toHaveBeenCalledWith(
-			expect.objectContaining({
-				type: "info",
-				text2: "A importação de arquivos .md chega na próxima etapa.",
-			}),
-		);
+		expect(mockPush).toHaveBeenCalledWith("/data");
 	});
 });

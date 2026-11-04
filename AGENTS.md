@@ -2,7 +2,7 @@
 
 ## Visão Geral
 
-App React Native (Expo) 100% offline para acompanhar vícios (dias sem ceder, vários ao mesmo tempo), organizar rotinas/cronogramas e focar com Pomodoro. Não há conta, login, backend nem rede: tudo fica em SQLite no aparelho. O usuário escolhe um nome de usuário no perfil, usado para personalizar as notificações locais. O app aceita importar arquivos `.md` (cronogramas e rotas de estudo) para preencher o perfil automaticamente. UI em português brasileiro. Android é a plataforma inicial; iOS depois.
+App React Native (Expo) 100% offline para acompanhar vícios (dias sem ceder, vários ao mesmo tempo), organizar rotinas/cronogramas e focar com Pomodoro. Não há conta, login, backend nem rede: tudo fica em SQLite no aparelho. O usuário escolhe um nome de usuário no perfil, usado para personalizar as notificações locais. O app importa e exporta **um formato só**, um arquivo `.db` (mesmo esquema do `rumo.db`), usado como backup e para preencher rotina, tarefas e metas; os `.md` de `seed/` são convertidos em `seed/rumo-seed.db` por script. UI em português brasileiro. Android é a plataforma inicial; iOS depois.
 
 ## Estrutura
 
@@ -16,13 +16,14 @@ src/
     profile/       # Nome de usuário e preferências de notificação
     notifications/ # Agendamento de notificações locais
     pomodoro/      # Temporizador de foco, pausas e histórico de sessões
-    markdownImport/# Leitura e parsing de arquivos .md
+    dataTransfer/  # Importação e backup em um único arquivo .db
   app/           # Rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/        # Design tokens
   utils/         # Utilitários globais
   types.ts       # Tipos e constantes de negócio
   __tests__/     # Testes espelhando a source
-seed/            # .md de exemplo usados para preencher o perfil (fixtures)
+seed/            # .md de origem e rumo-seed.db gerado a partir deles
+tools/seed/      # Conversor de .md em .db (npm run seed:build)
 App.tsx          # Raiz do app
 ```
 
@@ -65,17 +66,15 @@ Expo + React Native + TypeScript estrito (development build), Expo Router, `expo
 - Sem autenticação, Firebase, analytics, anúncios ou qualquer chamada de rede
 - A abertura depende apenas da hidratação do SQLite
 - Notificações são **locais** (`expo-notifications`), agendadas no aparelho
-- Importação de `.md` usa o seletor de arquivos do sistema; o arquivo é lido localmente e nunca enviado
+- Importação e backup usam o seletor de arquivos e a folha de compartilhamento do sistema; o `.db` é lido e gravado localmente e nunca enviado
 
-### Importação de Markdown
+### Importação e backup (.db)
 
-- Parser próprio e leve em `features/markdownImport/` (sem dependência de rede)
-- Cada título `##` com tabela `Horário | Atividade` vira um conjunto de blocos de rotina (ex.: "Dia útil", "Sábado", "Domingo")
-- Listas `- [ ]` / `- [x]` viram tarefas com estado de conclusão
-- Tabelas com coluna de horas por semana viram metas semanais (`weekly_goals`), aceitando `4h`, `3h30`, `45 min`
-- Front-matter YAML é lido e ignorado, tolerando blocos duplicados (como nos arquivos de exemplo)
-- Reimportar o mesmo arquivo (mesmo hash) não duplica dados; mudanças são mescladas por chave estável
-- Todo arquivo de `seed/` tem teste de parsing que usa o arquivo real como fixture
+- Formato único: SQLite com o esquema do `rumo.db`; backup completo e arquivo de plano (`seed/rumo-seed.db`) são lidos pelo mesmo código em `features/dataTransfer/`
+- O arquivo é aberto em banco temporário (`deserializeDatabaseAsync`), atualizado pelas migrations e só então lido; nunca se escreve nele nem se abre o `rumo.db` por cima
+- Cada categoria presente no arquivo substitui a atual, numa transação; mostrar sempre a pré-visualização antes de aplicar
+- Os `.md` de `seed/` são a fonte de edição; `npm run seed:build` (em `tools/seed/`) regenera `rumo-seed.db`, e um teste garante que ele está em dia
+- Nunca registrar em log nomes de vícios, anotações nem o conteúdo importado
 
 ### Notificações
 

@@ -4,7 +4,7 @@ Aplicativo React Native (Expo) para acompanhar vícios e organizar rotinas. É *
 
 ## Status
 
-Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 117 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão) e as abas Rotina e Foco ainda como telas vazias. As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
+Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 176 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) e as abas Rotina e Foco ainda como telas vazias. As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
 
 ## Como rodar
 
@@ -23,7 +23,7 @@ O app usa módulos nativos (SQLite e notificações), então roda em development
 - Escolha de **nome de usuário** (único dado obrigatório, sem senha).
 - Esse nome entra nas notificações personalizadas (`{username}`).
 - Preferências de notificação: ligar/desligar, horário da mensagem diária, modo discreto.
-- Importação de arquivos `.md` para **preencher o perfil automaticamente** (ver abaixo).
+- Importação de um arquivo `.db` para **preencher o perfil automaticamente**, e o mesmo formato como **backup** (ver abaixo).
 
 ### 2. Vícios
 
@@ -39,7 +39,7 @@ O app usa módulos nativos (SQLite e notificações), então roda em development
 - Grade semanal com blocos de horário: **dia útil**, **sábado** e **domingo**.
 - Visão do dia atual com o bloco em andamento destacado.
 - Criação e edição manual de blocos, além dos importados.
-- Tarefas com marcação de concluído (vindas de listas `- [ ]` nos arquivos importados).
+- Tarefas com marcação de concluído (vindas das listas `- [ ]` dos `.md` convertidos em `.db`).
 - Lembrete de notificação **10 minutos antes** de cada bloco (padrão, ajustável por bloco e nas preferências).
 - Metas semanais de horas por atividade, com progresso calculado pelo tempo realmente feito no Pomodoro.
 
@@ -55,32 +55,48 @@ O app usa módulos nativos (SQLite e notificações), então roda em development
 
 Login, sincronização em nuvem, backend, ranking ou comunidade, anúncios, iOS e bloqueio por PIN ou biometria (pode entrar depois como opcional).
 
-## Importação de arquivos `.md`
+## Importação e backup: um formato só (`.db`)
 
-O app recebe arquivos Markdown como os de [`seed/`](seed):
+Importar e fazer backup usam **o mesmo arquivo**: um banco SQLite com o mesmo esquema do `rumo.db` (extensão `.db`). Não há mais importação direta de `.md` dentro do app.
 
-| Arquivo                   | O que tem                                                                                                                              | O que o app extrai                                                      |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `seed/Cronograma.md`      | Grade semanal com tabelas `Horário \| Atividade` por dia, resumo da semana, horas por matéria, blocos de estudo e ferramentas de apoio | Blocos de rotina de dia útil, sábado e domingo; metas semanais de horas |
-| `seed/Rota_de_estudos.md` | Rota de estudo com listas `- [ ]` por matéria                                                                                          | Tarefas agrupadas por seção, com estado de conclusão                    |
+| Arquivo                | O que tem                                                                  | Como o app trata                                              |
+| ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `seed/rumo-seed.db`    | Rotina (59 blocos), tarefas (80) e metas semanais (16), gerado dos `.md`   | **Arquivo de plano**: substitui só rotina, tarefas e metas    |
+| Backup (`rumo-backup-AAAA-MM-DD-HHMM.db`) | Tudo: perfil, preferências, vícios, recaídas, rotina, tarefas, metas e sessões | **Backup completo**: o app fica igual ao arquivo |
 
-Esses dois arquivos preenchem o perfil por completo: rotina, tarefas e metas semanais. Servem também de fixture nos testes do parser.
+Os `.md` continuam em [`seed/`](seed) como **fonte de edição**. Para atualizar o plano, edite os `.md` e rode:
 
-Regras de leitura:
+```bash
+npm run seed:build
+```
+
+O script (`tools/seed/`) lê `Cronograma.md` e `Rota_de_estudos.md` e escreve `seed/rumo-seed.db`. Um teste falha se o `.db` versionado ficar diferente dos `.md`.
+
+Regras de leitura dos `.md` (usadas só pelo script):
 
 - Título `##` seguido de tabela com colunas `Horário` e `Atividade` vira um conjunto de blocos. O dia é inferido do título: "Dia útil (segunda a sexta)", "Sábado", "Domingo".
 - Intervalos como `09:40–10:40` viram início e fim; o travessão e o hífen são aceitos.
-- Linhas `- [ ]` e `- [x]` viram tarefas, agrupadas pelo título da seção.
-- Tabelas com coluna de horas por semana (como a tabela de matérias e o "Resumo da semana" do Cronograma) viram metas semanais. Formatos aceitos: `4h`, `3h30`, `45 min`, `1h40 (20 min por dia útil)`; textos extras entre parênteses são guardados como nota.
-- Front-matter e blocos repetidos no topo são ignorados.
-- Callouts do Obsidian (`> [!info]`) são lidos como texto simples.
-- O hash do arquivo evita duplicar dados ao reimportar. Se o arquivo mudou, o app mostra o que será adicionado ou atualizado antes de aplicar.
+- Linhas `- [ ]` e `- [x]` viram tarefas, agrupadas pelo título da seção. Itens sem `[ ]` não viram tarefa.
+- Tabelas com coluna de horas por semana viram metas semanais. Formatos aceitos: `4h`, `3h30`, `45 min`, `1h40 (20 min por dia útil)`; textos extras viram nota.
+- Front-matter e callouts do Obsidian são ignorados.
+
+### Como a importação e o backup funcionam hoje
+
+- Perfil → "Abrir importação e backup" (`/data`).
+- **Importar**: escolher o `.db` → pré-visualização (o que o arquivo traz e quanto será substituído) → "Importar". Se algo atual for substituído, há uma confirmação extra. Nada é gravado antes de confirmar e a importação é uma transação única.
+- **Cada categoria que o arquivo traz substitui a atual** (perfil, vícios com recaídas, blocos de rotina, tarefas, metas, sessões de foco). O que o arquivo não traz fica como está.
+- Em **arquivo de plano** (sem vícios nem perfil), tarefas já concluídas continuam concluídas. Em **backup completo**, o resultado é uma cópia exata.
+- Arquivos de versões antigas do esquema são atualizados antes da leitura. Arquivos de versão mais nova que o app e arquivos que não são do Rumo são recusados com aviso.
+- **Backup**: "Fazer backup" gera `rumo-backup-….db` a partir do banco atual e abre a folha de compartilhamento do Android (Drive, Arquivos, etc.). O backup **não é criptografado** e contém nomes de vícios e anotações: guarde em lugar seguro. O arquivo é lido e gravado só no aparelho; o app nunca o envia.
+- Dias da semana são guardados numa máscara de bits que segue `Date#getDay()`: domingo = 1, segunda = 2, terça = 4, quarta = 8, quinta = 16, sexta = 32, sábado = 64 (dia útil = 62).
+- Blocos importados ganham o lembrete padrão de 10 minutos antes. O agendamento em si vem com as notificações locais.
+- A tabela `imports` e as colunas `import_id` ficam reservadas e hoje não são usadas.
 
 ### Como o Perfil funciona hoje
 
 - Na primeira abertura, se não houver nome de usuário, o app leva ao **onboarding** (`/onboarding`), onde a pessoa escolhe o nome (2 a 24 caracteres).
 - A aba **Perfil** permite editar o nome e o horário da mensagem diária (`HH:MM`), ligar ou desligar as notificações e ativar o modo discreto. Cada ação mostra um toast de confirmação ou de erro.
-- O botão "Escolher arquivo" da importação de `.md` ainda só avisa que a etapa chega depois.
+- O botão "Abrir importação e backup" leva à tela `/data`, descrita em "Como a importação e o backup funcionam hoje".
 - As preferências já ficam salvas em `profile`; o agendamento das notificações que as usa entra na etapa de notificações.
 
 ## Notificações personalizadas
@@ -124,7 +140,7 @@ Dias sem ceder = agora − (última recaída ou `quit_at`). Nenhum contador é g
 | Estado         | Zustand                                                                                                                      |
 | Formulários    | React Hook Form + Zod                                                                                                        |
 | Notificações   | `expo-notifications` (somente locais)                                                                                        |
-| Importar `.md` | `expo-document-picker` + `expo-file-system` e parser próprio                                                                 |
+| Importar e backup | `.db` único: `expo-document-picker`, `expo-file-system`, `expo-sharing` e `expo-sqlite` (`serializeAsync` / `deserializeDatabaseAsync`) |
 | Datas          | `date-fns` com locale pt-BR                                                                                                  |
 | UI             | `StyleSheet` com design tokens, `@expo/vector-icons`, componente de toast reaproveitado do VCampos                           |
 | Qualidade      | Biome, `tsc`, Jest + React Native Testing Library, GitHub Actions                                                            |
@@ -146,12 +162,13 @@ src/
     profile/
     notifications/
     pomodoro/
-    markdownImport/
+    dataTransfer/
   app/                 rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/
   utils/
   __tests__/           espelha a source
-seed/                  Cronograma.md, Rota_de_estudos.md
+tools/seed/            conversor de .md em rumo-seed.db (npm run seed:build)
+seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 ```
 
 ## Roadmap
@@ -164,16 +181,16 @@ seed/                  Cronograma.md, Rota_de_estudos.md
 - [ ] Rotina: grade semanal, visão do dia, edição de blocos e lembrete 10 min antes
 - [ ] Pomodoro fixo 25/5/15: temporizador, notificações em segundo plano, histórico de sessões e opção perguntar/automático
 - [ ] Metas semanais de horas com progresso vindo do Pomodoro
-- [ ] Parser de `.md` com testes sobre os arquivos de `seed/`
-- [ ] Importação com pré-visualização e preenchimento automático do perfil (rotina, tarefas e metas semanais)
-- [ ] Tarefas importadas das listas `- [ ]`
-- [ ] Backup e restauração manual do `rumo.db`
+- [x] Conversor de `.md` em `.db` (`npm run seed:build`) com testes sobre os arquivos de `seed/`
+- [x] Importação de `.db` com pré-visualização e preenchimento automático do perfil (rotina, tarefas e metas semanais)
+- [x] Tarefas importadas das listas `- [ ]` (a tela para ver e marcar as tarefas vem com a Rotina)
+- [x] Backup e restauração em um único arquivo `.db` (mesmo formato da importação)
 - [ ] Modo escuro, ícone e splash
 
 ## Decisões tomadas
 
 - Vários vícios ao mesmo tempo.
-- O perfil é preenchido por completo a partir dos `.md`: rotina, tarefas e metas semanais de horas.
+- Importação e backup usam **um formato só**, o `.db`; os `.md` viram `seed/rumo-seed.db` por script e preenchem rotina, tarefas e metas semanais de horas.
 - Lembrete de rotina 10 minutos antes do bloco.
 - O app inclui um Pomodoro fixo em 25/5/15 (pausa longa a cada 4 ciclos) na primeira versão.
 - Ao fim de um foco, o app pergunta se a tarefa foi concluída; Configurações permite trocar para marcar automaticamente.

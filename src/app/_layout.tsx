@@ -26,6 +26,10 @@ export default function RootLayout() {
 					name="addictions/[id]"
 					options={{ ...headerOptions, title: "Vício" }}
 				/>
+				<Stack.Screen
+					name="data"
+					options={{ ...headerOptions, title: "Importar e backup" }}
+				/>
 			</Stack>
 			<Toast config={toastConfig} />
 		</SQLiteProvider>

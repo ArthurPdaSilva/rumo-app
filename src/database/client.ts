@@ -11,7 +11,11 @@ export type Database = Pick<
 	| "getAllAsync"
 	| "runAsync"
 	| "withTransactionAsync"
+	| "serializeAsync"
 >;
+
+/** Banco aberto a partir de um arquivo recebido; precisa ser fechado depois de lido. */
+export type TemporaryDatabase = Database & { closeAsync: () => Promise<void> };
 
 export async function migrateDatabase(
 	db: Database,

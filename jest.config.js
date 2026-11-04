@@ -9,6 +9,10 @@ module.exports = {
 		"!src/__tests__/**",
 		"!src/app/**",
 	],
-	testPathIgnorePatterns: ["/node_modules/", "/src/__tests__/helpers/"],
+	testPathIgnorePatterns: [
+		"/node_modules/",
+		"/_to_delete/",
+		"/src/__tests__/helpers/",
+	],
 	setupFiles: ["./jest.setup.js"],
 };

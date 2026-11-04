@@ -44,3 +44,6 @@ example
 
 # coverage
 coverage/
+
+# arquivos antigos aguardando exclusão manual
+_to_delete/

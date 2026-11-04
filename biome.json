@@ -7,7 +7,15 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!coverage", "!dist", "!.expo", "!node_modules", "!seed"]
+		"includes": [
+			"**",
+			"!coverage",
+			"!dist",
+			"!.expo",
+			"!node_modules",
+			"!seed",
+			"!_to_delete"
+		]
 	},
 	"formatter": {
 		"enabled": true,

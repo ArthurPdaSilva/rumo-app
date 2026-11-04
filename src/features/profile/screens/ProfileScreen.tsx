@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { Controller, useForm } from "react-hook-form";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -16,6 +17,7 @@ import { borderRadius, fontSize, fontWeight, spacing } from "@/styles/tokens";
 
 export function ProfileScreen() {
 	const db = useSQLiteContext();
+	const router = useRouter();
 	const colors = useThemeColors();
 	const profile = useProfileStore((state) => state.profile);
 	const saveDetails = useProfileStore((state) => state.saveDetails);
@@ -156,20 +158,16 @@ export function ProfileScreen() {
 				]}
 			>
 				<Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-					Importar arquivos .md
+					Importar e backup
 				</Text>
 				<Text style={[styles.hint, { color: colors.textMuted }]}>
-					Cronogramas e rotas de estudo preenchem a sua rotina, as tarefas e as
-					metas semanais automaticamente.
+					Importe um arquivo .db com a sua rotina, tarefas e metas semanais, ou
+					faça um backup de tudo em um único arquivo.
 				</Text>
 				<ActionButton
-					title="Escolher arquivo"
+					title="Abrir importação e backup"
 					variant="secondary"
-					onPress={() =>
-						notification.info(
-							"A importação de arquivos .md chega na próxima etapa.",
-						)
-					}
+					onPress={() => router.push("/data")}
 				/>
 			</View>
 		</ScrollView>

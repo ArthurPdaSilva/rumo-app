@@ -1,14 +1,25 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import type { Database } from "../../database/client";
+import type { Database, TemporaryDatabase } from "../../database/client";
 
 type SqlValue = string | number | null;
 
+/** Pasta temporária única para os arquivos `.db` dos testes. */
+export function makeTempDir(): string {
+	return mkdtempSync(join(tmpdir(), "rumo-test-"));
+}
+
 /**
- * Banco SQLite real em memória, com a mesma API assíncrona do expo-sqlite
- * usada pelo app. Permite testar SQL, migrations e repositories de verdade.
+ * Banco SQLite real, com a mesma API assíncrona do expo-sqlite usada pelo
+ * app. Permite testar SQL, migrations e repositories de verdade. Em memória
+ * por padrão; passe um caminho para abrir um arquivo.
  */
-export function createTestDatabase(): Database & { close: () => void } {
-	const raw = new DatabaseSync(":memory:");
+export function createTestDatabase(
+	path = ":memory:",
+): Database & { close: () => void } {
+	const raw = new DatabaseSync(path);
 
 	return {
 		close: () => raw.close(),
@@ -38,5 +49,31 @@ export function createTestDatabase(): Database & { close: () => void } {
 				throw error;
 			}
 		},
+		serializeAsync: async () => {
+			const dir = makeTempDir();
+			const file = join(dir, "dump.db");
+			try {
+				raw.exec(`VACUUM INTO '${file}'`);
+				return new Uint8Array(readFileSync(file));
+			} finally {
+				rmSync(dir, { recursive: true, force: true });
+			}
+		},
 	} as unknown as Database & { close: () => void };
+}
+
+/** Faz o papel do `deserializeDatabaseAsync` do expo-sqlite nos testes. */
+export async function openTestRumoFile(
+	bytes: Uint8Array,
+): Promise<TemporaryDatabase> {
+	const dir = makeTempDir();
+	const file = join(dir, "incoming.db");
+	writeFileSync(file, bytes);
+	const db = createTestDatabase(file);
+	return Object.assign(db, {
+		closeAsync: async () => {
+			db.close();
+			rmSync(dir, { recursive: true, force: true });
+		},
+	}) as unknown as TemporaryDatabase;
 }

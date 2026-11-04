@@ -63,3 +63,42 @@ export interface AddictionDetails {
 	relapses: Relapse[];
 	bestStreakMs: number;
 }
+
+/** Máscara de dias da semana: o bit de cada dia segue `Date#getDay()` (0 = domingo). */
+export const WEEKDAY_BITS = {
+	sunday: 1,
+	monday: 2,
+	tuesday: 4,
+	wednesday: 8,
+	thursday: 16,
+	friday: 32,
+	saturday: 64,
+} as const;
+export const WORKDAYS_MASK = 2 | 4 | 8 | 16 | 32;
+
+export interface RoutineBlock {
+	id: number;
+	weekdays: number;
+	startTime: string;
+	endTime: string | null;
+	title: string;
+	notes: string | null;
+	reminderMinutes: number;
+	importId: number | null;
+}
+
+export interface Task {
+	id: number;
+	section: string;
+	title: string;
+	done: boolean;
+	importId: number | null;
+}
+
+export interface WeeklyGoal {
+	id: number;
+	activity: string;
+	targetMinutes: number;
+	note: string | null;
+	importId: number | null;
+}
