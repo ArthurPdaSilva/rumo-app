@@ -1,7 +1,16 @@
 import { migrateDatabase } from "../../../../database/client";
 import { useFocusStore } from "../../../../features/focus/stores/FocusStore";
 import { useRoutineStore } from "../../../../features/routine/stores/RoutineStore";
+import {
+	cancelPomodoroAlerts,
+	schedulePomodoroAlerts,
+} from "../../../../features/notifications/pomodoroAlerts";
 import { createTestDatabase } from "../../../helpers/createTestDatabase";
+
+jest.mock("../../../../features/notifications/pomodoroAlerts", () => ({
+	schedulePomodoroAlerts: jest.fn().mockResolvedValue(undefined),
+	cancelPomodoroAlerts: jest.fn().mockResolvedValue(undefined),
+}));
 
 const T0 = new Date(2026, 10, 4, 14, 0).getTime();
 const MIN = 60_000;
@@ -29,6 +38,7 @@ describe("useFocusStore", () => {
 			goals: [],
 			isLoaded: false,
 		});
+		jest.clearAllMocks();
 	});
 
 	afterEach(() => {
@@ -201,5 +211,63 @@ describe("useFocusStore", () => {
 			"SELECT ended_at FROM pomodoro_sessions",
 		);
 		expect(row?.ended_at).toBeNull();
+	});
+
+	test("iniciar agenda os avisos de fim de foco e de pausa curta", async () => {
+		await useFocusStore.getState().startFocus(db, free, T0);
+
+		expect(schedulePomodoroAlerts).toHaveBeenCalledWith({
+			focusEndsAt: T0 + 25 * MIN,
+			breakMinutes: 5,
+			breakEndsAt: T0 + 30 * MIN,
+		});
+	});
+
+	test("o aviso do quarto foco já prevê a pausa longa", async () => {
+		for (let i = 0; i < 3; i++) {
+			await useFocusStore.getState().startFocus(db, free, Date.now());
+			await jest.advanceTimersByTimeAsync(25 * MIN);
+			useFocusStore.getState().skipBreak();
+		}
+		jest.clearAllMocks();
+		const start = Date.now();
+		await useFocusStore.getState().startFocus(db, free, start);
+
+		expect(schedulePomodoroAlerts).toHaveBeenCalledWith({
+			focusEndsAt: start + 25 * MIN,
+			breakMinutes: 15,
+			breakEndsAt: start + 40 * MIN,
+		});
+	});
+
+	test("cancelar o foco e pular a pausa cancelam os avisos", async () => {
+		await useFocusStore.getState().startFocus(db, free, T0);
+		await useFocusStore.getState().cancelPhase(db, T0 + MIN);
+		expect(cancelPomodoroAlerts).toHaveBeenCalledTimes(1);
+
+		await useFocusStore.getState().startFocus(db, free, Date.now());
+		await jest.advanceTimersByTimeAsync(25 * MIN);
+		useFocusStore.getState().skipBreak();
+		expect(cancelPomodoroAlerts).toHaveBeenCalledTimes(2);
+	});
+
+	test("falha ao agendar o aviso não impede o foco", async () => {
+		(schedulePomodoroAlerts as jest.Mock).mockRejectedValueOnce(
+			new Error("sem módulo"),
+		);
+		await useFocusStore.getState().startFocus(db, free, T0);
+
+		expect(useFocusStore.getState().phase?.kind).toBe("focus");
+	});
+
+	test("voltar tarde ao app: a pausa conta a partir do fim do foco", async () => {
+		await useFocusStore.getState().startFocus(db, free, T0);
+		jest.clearAllTimers();
+		await useFocusStore.getState().finishPhase(db, T0 + 27 * MIN);
+
+		expect(useFocusStore.getState().phase).toMatchObject({
+			kind: "break",
+			startedAtMs: T0 + 25 * MIN,
+		});
 	});
 });

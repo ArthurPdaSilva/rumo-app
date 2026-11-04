@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/notifications";
 import { DATABASE_NAME, initializeDatabase } from "@/database/client";
+import { NotificationSync } from "@/features/notifications/components/NotificationSync";
 import { useThemeColors } from "@/styles/theme";
 
 export default function RootLayout() {
@@ -17,6 +18,7 @@ export default function RootLayout() {
 	return (
 		<SQLiteProvider databaseName={DATABASE_NAME} onInit={initializeDatabase}>
 			<StatusBar style="auto" />
+			<NotificationSync />
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen
 					name="addictions/new"

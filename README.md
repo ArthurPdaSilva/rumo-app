@@ -4,7 +4,7 @@ Aplicativo React Native (Expo) para acompanhar vícios e organizar rotinas. É *
 
 ## Status
 
-Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 263 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) a **tela de Rotina** (dia, tarefas e metas, com criação e edição de blocos) e a **tela de Foco** (Pomodoro 25/5/15, histórico de sessões e progresso das metas semanais). As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
+Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 298 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) a **tela de Rotina** (dia, tarefas e metas, com criação e edição de blocos) a **tela de Foco** (Pomodoro 25/5/15, histórico de sessões e progresso das metas semanais) e as **notificações locais** (marcos, lembretes da rotina, mensagem diária e avisos do foco). As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
 
 ## Como rodar
 
@@ -112,7 +112,7 @@ Regras de leitura dos `.md` (usadas só pelo script):
 
 - **Tempos fixos**: 25 min de foco, 5 de pausa e 15 de pausa longa depois de 4 focos. Ao acabar um foco a pausa começa sozinha; ao acabar a pausa o app espera você iniciar o próximo foco. Os quatro pontinhos mostram o ciclo.
 - **No que focar**: o bloco da rotina em andamento (se houver) vem selecionado, seguido das atividades das metas semanais e das seções de tarefas; "Foco livre" não conta para nenhuma meta. Dá para escolher uma tarefa aberta da atividade.
-- **O relógio usa horário, não contagem de ticks**: se o app ficar em segundo plano, ao voltar a fase vencida é fechada com a duração certa. O aviso sonoro com o app fechado depende das notificações locais, que ainda não existem.
+- **O relógio usa horário, não contagem de ticks**: se o app ficar em segundo plano, ao voltar a fase vencida é fechada com a duração certa. Com o app fechado, o aviso de fim de foco e de pausa chega como notificação local (agendada ao iniciar o foco).
 - **Só o foco é gravado** em `pomodoro_sessions`, com `activity`, bloco e tarefa. Foco cancelado fica com `completed = 0` e não conta. Se o app for fechado no meio de um foco, a sessão aberta é encerrada na próxima abertura sem contar tempo.
 - **Metas**: o progresso da semana (segunda a domingo) soma os minutos de focos concluídos por atividade, comparando o nome da atividade com o da meta.
 - **Fim do foco com tarefa**: no modo `ask` o app pergunta se concluiu; em `auto_complete` marca como feita. A chave fica na própria tela de Foco.
@@ -130,6 +130,18 @@ Todas locais, agendadas no aparelho (`expo-notifications`). Exemplos de modelo:
 | Após recaída          | "{username}, recomeçar faz parte. Hoje é o dia 1 de novo." |
 
 O modo discreto troca o nome do vício por um texto genérico na tela bloqueada.
+
+### Como as notificações funcionam hoje
+
+- **Tudo é recalculado do banco**: ao abrir o app, ao voltar para ele e (com 0,5 s de espera) sempre que perfil, vícios ou rotina mudam, o app cancela o que estava agendado e agenda de novo (`syncNotifications`). Isso cobre nome de usuário, recaída, vício novo, bloco editado, importação de `.db` e as chaves do Perfil.
+- **Marcos**: para cada vício ativo, os próximos 3 marcos (1, 3, 7, 14, 30, 60, 90, 180 e 365 dias) como avisos de data. Marco que cai entre 22h e 8h é entregue às 8h. Uma recaída muda o início da contagem e os marcos são recalculados.
+- **Mensagem diária**: todo dia no horário do Perfil (padrão 08:30).
+- **Rotina**: um lembrete semanal por dia de cada bloco, `reminder_minutes` antes do início (padrão 10; **0 desliga**). Lembrete que cai antes da meia-noite vai para o dia anterior.
+- **Foco**: ao iniciar, agenda o fim do foco (com o tamanho da pausa que vem depois, 5 ou 15 min) e o fim dessa pausa. Cancelar o foco ou pular a pausa cancela esses avisos. Com o app aberto eles não aparecem (a tela já avisa por toast).
+- **Modo discreto**: o texto do marco não cita o vício.
+- **Permissões**: o app pede a permissão de notificações uma vez por abertura quando ela ainda não foi decidida. No Perfil, se o sistema bloqueou as notificações ou negou o alarme exato (Android 12+), aparece um aviso com o botão certo. Sem o alarme exato os avisos continuam, só podem atrasar alguns minutos.
+- **Canais do Android**: "Lembretes da rotina", "Marcos e mensagem diária" e "Foco e pausas", que dá para silenciar separadamente nos ajustes do sistema.
+- **Não implementado**: o texto "Após recaída" da tabela acima ainda não é enviado, e o iOS limita a 64 agendamentos (o Android, plataforma inicial, não).
 
 ## Modelo de dados (SQLite, `rumo.db`)
 
@@ -195,11 +207,11 @@ seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 - [x] SQLiteProvider, migration 001 e repositories
 - [x] Perfil: nome de usuário e onboarding
 - [x] Vícios: cadastro, contador, recaída e exclusão (as notificações de marco entram com as notificações locais)
-- [ ] Notificações locais com `{username}`
+- [x] Notificações locais com `{username}` (marcos, mensagem diária, modo discreto, permissão de alarme exato)
 - [x] Rotina: visão por dia da semana, bloco em andamento, criação, edição e exclusão de blocos, tarefas e metas
-- [ ] Lembrete 10 minutos antes de cada bloco (vem com as notificações locais)
+- [x] Lembrete 10 minutos antes de cada bloco (ajustável por bloco; 0 desliga)
 - [x] Pomodoro fixo 25/5/15: temporizador, sessões gravadas no banco e opção perguntar/automático
-- [ ] Aviso de fim de foco e de pausa com o app em segundo plano (vem com as notificações locais)
+- [x] Aviso de fim de foco e de pausa com o app em segundo plano
 - [x] Metas semanais de horas com progresso vindo do Pomodoro
 - [x] Conversor de `.md` em `.db` (`npm run seed:build`) com testes sobre os arquivos de `seed/`
 - [x] Importação de `.db` com pré-visualização e preenchimento automático do perfil (rotina, tarefas e metas semanais)

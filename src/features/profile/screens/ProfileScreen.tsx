@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ActionButton } from "@/components/ActionButton";
 import { notification } from "@/components/notifications";
+import { PermissionsCard } from "@/features/notifications/components/PermissionsCard";
 import { SwitchRow } from "@/components/SwitchRow";
 import { TextField } from "@/components/TextField";
 import {
@@ -149,6 +150,7 @@ export function ProfileScreen() {
 					value={profile.discreetMode}
 					onValueChange={onToggleDiscreet}
 				/>
+				<PermissionsCard />
 			</View>
 
 			<View

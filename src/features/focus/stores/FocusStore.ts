@@ -17,6 +17,10 @@ import {
 	phaseDurationMs,
 	phaseMinutes,
 } from "@/features/focus/pomodoro";
+import {
+	cancelPomodoroAlerts,
+	schedulePomodoroAlerts,
+} from "@/features/notifications/pomodoroAlerts";
 import { useRoutineStore } from "@/features/routine/stores/RoutineStore";
 import type { PomodoroOnFocusEnd } from "@/types";
 import { dayRange, weekRange } from "@/utils/week";
@@ -87,6 +91,11 @@ export function phaseEndsAt(phase: ActivePhase): number {
 	return phase.startedAtMs + phase.durationMs;
 }
 
+/** Avisos em segundo plano são um extra: falhar aqui nunca pode travar o foco. */
+function bestEffort(task: Promise<unknown>) {
+	task.catch(() => undefined);
+}
+
 function markTaskDoneInRoutineStore(taskId: number) {
 	useRoutineStore.setState((state) => ({
 		tasks: state.tasks.map((task) =>
@@ -142,6 +151,15 @@ export const useFocusStore = create<FocusState>((set, get) => {
 				sessionId,
 				target,
 			});
+			const focusEndsAt = nowMs + phaseDurationMs("focus");
+			const breakKind = breakAfterFocus(get().cycleCount + 1);
+			bestEffort(
+				schedulePomodoroAlerts({
+					focusEndsAt,
+					breakMinutes: phaseMinutes(breakKind),
+					breakEndsAt: focusEndsAt + phaseDurationMs(breakKind),
+				}),
+			);
 		},
 		finishPhase: async (db, nowMs = Date.now()) => {
 			const phase = get().phase;
@@ -192,7 +210,8 @@ export const useFocusStore = create<FocusState>((set, get) => {
 				await refreshStats(db, nowMs);
 				begin(db, {
 					kind: nextKind,
-					startedAtMs: nowMs,
+					// A pausa começa quando o foco acabou, mesmo que o app só volte depois.
+					startedAtMs: phaseEndsAt(phase),
 					durationMs: phaseDurationMs(nextKind),
 					sessionId: null,
 					target: phase.target,
@@ -206,6 +225,7 @@ export const useFocusStore = create<FocusState>((set, get) => {
 			if (!phase) return;
 			clearTimer();
 			set({ phase: null });
+			bestEffort(cancelPomodoroAlerts());
 			if (phase.kind === "focus") {
 				if (phase.sessionId !== null) {
 					await finishFocusSession(
@@ -223,6 +243,7 @@ export const useFocusStore = create<FocusState>((set, get) => {
 			const phase = get().phase;
 			if (!phase || phase.kind === "focus") return;
 			clearTimer();
+			bestEffort(cancelPomodoroAlerts());
 			set({
 				phase: null,
 				...(phase.kind === "longBreak" ? { cycleCount: 0 } : {}),
@@ -243,6 +264,7 @@ export const useFocusStore = create<FocusState>((set, get) => {
 		clearNotice: () => set({ notice: null }),
 		reset: () => {
 			clearTimer();
+			bestEffort(cancelPomodoroAlerts());
 			finishing = false;
 			set({ ...initialState });
 		},

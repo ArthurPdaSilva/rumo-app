@@ -85,6 +85,8 @@ Expo + React Native + TypeScript estrito (development build), Expo Router, `expo
 - Todo agendamento é recalculado ao mudar nome de usuário, vício, rotina ou preferências
 - Mensagens nunca culpam, ameaçam ou ridicularizam; recaída é tratada com acolhimento
 - Opção de notificação discreta (sem o nome do vício na tela bloqueada)
+- Estrutura em `features/notifications/`: `messages.ts` (textos), `planner.ts` (planejamento puro, testável), `notificationsClient.ts` (único arquivo que importa `expo-notifications`), `syncNotifications.ts` (lê o banco e reagenda tudo, em fila), `pomodoroAlerts.ts` (avisos do foco, identificadores `pomodoro:*` preservados pelo sync) e `NotificationSync` no layout raiz
+- Marcos entre 22h e 8h são entregues às 8h; lembrete de rotina com `reminder_minutes = 0` não agenda nada
 
 ### Pomodoro
 

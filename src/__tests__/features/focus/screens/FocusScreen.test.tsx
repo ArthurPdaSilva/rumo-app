@@ -12,6 +12,10 @@ import { createTestDatabase } from "../../../helpers/createTestDatabase";
 
 let mockDb: ReturnType<typeof createTestDatabase>;
 
+jest.mock("../../../../features/notifications/pomodoroAlerts", () => ({
+	schedulePomodoroAlerts: jest.fn().mockResolvedValue(undefined),
+	cancelPomodoroAlerts: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("expo-sqlite", () => ({ useSQLiteContext: () => mockDb }));
 // Quarta-feira, 14:15 (horário local).
 const NOW = new Date(2026, 10, 4, 14, 15);
@@ -159,9 +163,9 @@ describe("FocusScreen", () => {
 		});
 		await render(<FocusScreen />);
 
-		await waitFor(() =>
-			expect(useFocusStore.getState().phase?.kind).toBe("break"),
-		);
+		// A pausa começou quando o foco acabou (há 5 min) e já terminou.
+		await waitFor(() => expect(useFocusStore.getState().cycleCount).toBe(1));
+		await waitFor(() => expect(useFocusStore.getState().phase).toBeNull());
 		const row = await mockDb.getFirstAsync<{ completed: number }>(
 			"SELECT completed FROM pomodoro_sessions WHERE id = ?",
 			id,

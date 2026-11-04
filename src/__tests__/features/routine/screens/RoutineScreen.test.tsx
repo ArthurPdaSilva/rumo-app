@@ -160,7 +160,9 @@ describe("RoutineScreen", () => {
 		expect(screen.getByText("4h por semana")).toBeTruthy();
 		expect(screen.getByText("4h25 por semana")).toBeTruthy();
 		expect(screen.getByText("35 min por dia útil")).toBeTruthy();
-		expect(screen.getByText(/progresso de cada meta aparece na aba Foco/)).toBeTruthy();
+		expect(
+			screen.getByText(/progresso de cada meta aparece na aba Foco/),
+		).toBeTruthy();
 	});
 
 	test("sem dados importados, cada aba orienta a importar", async () => {
