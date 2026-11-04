@@ -172,6 +172,50 @@ describe("planNotifications", () => {
 	});
 });
 
+describe("mensagem após recaída", () => {
+	// Recaída hoje às 13h: o início da contagem difere de quitAt.
+	const relapsed = (hour: number) =>
+		addiction({
+			streakStartedAt: new Date(2026, 10, 4, hour, 0).toISOString(),
+		});
+	const followUp = (item: Addiction) =>
+		plan({ addictions: [item] }).find((entry) => entry.kind === "relapse");
+
+	test("agenda duas horas depois da recaída", () => {
+		expect(followUp(relapsed(13))).toMatchObject({
+			id: "relapse:1",
+			channel: "support",
+			trigger: { type: "date", date: new Date(2026, 10, 4, 15, 0) },
+			body: "Arthur, recomeçar faz parte. Hoje é o dia 1 de novo.",
+		});
+	});
+
+	test("recaída à noite espera até as 8h", () => {
+		expect(followUp(relapsed(21))?.trigger).toEqual({
+			type: "date",
+			date: new Date(2026, 10, 5, 8, 0),
+		});
+	});
+
+	test("não agenda sem recaída, depois de enviada ou com o vício arquivado", () => {
+		expect(followUp(addiction())).toBeUndefined();
+		expect(followUp(relapsed(10))).toBeUndefined(); // 12h já passou
+		expect(
+			followUp({ ...relapsed(13), archivedAt: now.toISOString() }),
+		).toBeUndefined();
+	});
+
+	test("o modo discreto não muda o texto, que já não cita o vício", () => {
+		const [item] = planNotifications({
+			profile: { ...profile, discreetMode: true },
+			addictions: [{ ...relapsed(13), name: "Cigarro" }],
+			blocks: [],
+			now,
+		}).filter((entry) => entry.kind === "relapse");
+		expect(item?.body).not.toContain("Cigarro");
+	});
+});
+
 describe("planPomodoroAlerts", () => {
 	test("avisos de fim de foco e de pausa com identificadores próprios", () => {
 		const items = planPomodoroAlerts({

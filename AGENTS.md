@@ -79,7 +79,7 @@ Expo + React Native + TypeScript estrito (development build), Expo Router, `expo
 ### Notificações
 
 - Textos com `{username}` e variáveis (`{days}`, `{addiction}`, `{activity}`) substituídas no agendamento
-- Tipos: marco de dias sem ceder, lembrete de bloco da rotina, mensagem de apoio diária, fim de foco e de pausa do Pomodoro
+- Tipos: marco de dias sem ceder, acolhimento após recaída (2 h depois, sem citar o vício), lembrete de bloco da rotina, mensagem de apoio diária, fim de foco e de pausa do Pomodoro
 - Lembrete de rotina padrão: **10 minutos antes** do bloco (`reminder_minutes`, ajustável por bloco)
 - Alarme exato no Android 14+: declarar `SCHEDULE_EXACT_ALARM`, checar a permissão antes de agendar e levar a pessoa à tela de ajustes quando faltar; se negada, agendar com horário aproximado e avisar na tela. Não usar `USE_EXACT_ALARM`
 - Todo agendamento é recalculado ao mudar nome de usuário, vício, rotina ou preferências

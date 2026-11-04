@@ -11,6 +11,7 @@ const TEMPLATES = {
 	routine: "{username}, em {minutes} {minuteWord}: {activity}.",
 	focusEnd: "Foco concluído, {username}! Pausa de {minutes} minutos.",
 	breakEnd: "Pausa terminada, {username}. Pronto para outro foco?",
+	relapse: "{username}, recomeçar faz parte. Hoje é o dia 1 de novo.",
 } as const;
 
 export interface Message {
@@ -82,4 +83,9 @@ export function focusEndMessage(
 
 export function breakEndMessage(username: string): Message {
 	return message(TEMPLATES.breakEnd, { username: nameOf(username) });
+}
+
+/** Acolhimento depois de uma recaída; nunca cita o vício, então já serve ao modo discreto. */
+export function relapseMessage(username: string): Message {
+	return message(TEMPLATES.relapse, { username: nameOf(username) });
 }

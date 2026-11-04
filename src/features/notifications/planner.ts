@@ -4,6 +4,7 @@ import {
 	focusEndMessage,
 	type Message,
 	milestoneMessage,
+	relapseMessage,
 	routineMessage,
 } from "@/features/notifications/messages";
 import {
@@ -17,6 +18,7 @@ import { hasWeekday } from "@/utils/weekdays";
 
 export type NotificationKind =
 	| "milestone"
+	| "relapse"
 	| "daily"
 	| "routine"
 	| "pomodoroFocus"
@@ -42,6 +44,8 @@ export interface PlannedNotification extends Message {
 export const POMODORO_ID_PREFIX = "pomodoro:";
 export const MAX_MILESTONES_PER_ADDICTION = 3;
 const DAY_MS = 86_400_000;
+/** Quanto tempo depois da recaída chega a mensagem de acolhimento. */
+export const RELAPSE_FOLLOWUP_MS = 2 * 3_600_000;
 const QUIET_START_HOUR = 22;
 const QUIET_END_HOUR = 8;
 
@@ -97,6 +101,38 @@ function planMilestones(
 				trigger: { type: "date", date: at },
 			});
 		}
+	}
+	return planned;
+}
+
+/**
+ * Depois de uma recaída o início da contagem deixa de ser `quitAt`. Dessa
+ * diferença sai a mensagem de acolhimento, sem precisar ler a tabela de recaídas.
+ */
+function planRelapseFollowUps(
+	profile: Profile,
+	addictions: Addiction[],
+	now: Date,
+): PlannedNotification[] {
+	const planned: PlannedNotification[] = [];
+	for (const addiction of addictions) {
+		if (
+			addiction.archivedAt ||
+			addiction.streakStartedAt === addiction.quitAt
+		) {
+			continue;
+		}
+		const start = new Date(addiction.streakStartedAt).getTime();
+		if (Number.isNaN(start)) continue;
+		const at = adjustForQuietHours(new Date(start + RELAPSE_FOLLOWUP_MS));
+		if (at.getTime() <= now.getTime()) continue;
+		planned.push({
+			id: `relapse:${addiction.id}`,
+			kind: "relapse",
+			channel: "support",
+			...relapseMessage(profile.username),
+			trigger: { type: "date", date: at },
+		});
 	}
 	return planned;
 }
@@ -166,6 +202,7 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
 	}
 	planned.push(
 		...planMilestones(profile, input.addictions, input.now),
+		...planRelapseFollowUps(profile, input.addictions, input.now),
 		...planRoutine(profile, input.blocks),
 	);
 	return planned;

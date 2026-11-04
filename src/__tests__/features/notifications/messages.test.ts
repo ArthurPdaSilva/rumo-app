@@ -3,6 +3,7 @@ import {
 	dailyMessage,
 	focusEndMessage,
 	milestoneMessage,
+	relapseMessage,
 	renderTemplate,
 	routineMessage,
 } from "../../../features/notifications/messages";
@@ -57,5 +58,11 @@ describe("messages", () => {
 
 	test("sem nome usa um tratamento neutro", () => {
 		expect(dailyMessage("  ").body).toContain("você");
+	});
+
+	test("mensagem após recaída acolhe e não cita o vício", () => {
+		expect(relapseMessage("Arthur").body).toBe(
+			"Arthur, recomeçar faz parte. Hoje é o dia 1 de novo.",
+		);
 	});
 });

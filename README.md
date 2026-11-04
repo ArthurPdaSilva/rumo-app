@@ -4,7 +4,7 @@ Aplicativo React Native (Expo) para acompanhar vícios e organizar rotinas. É *
 
 ## Status
 
-Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 298 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) a **tela de Rotina** (dia, tarefas e metas, com criação e edição de blocos) a **tela de Foco** (Pomodoro 25/5/15, histórico de sessões e progresso das metas semanais) e as **notificações locais** (marcos, lembretes da rotina, mensagem diária e avisos do foco). As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
+Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 303 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) a **tela de Rotina** (dia, tarefas e metas, com criação e edição de blocos) a **tela de Foco** (Pomodoro 25/5/15, histórico de sessões e progresso das metas semanais) e as **notificações locais** (marcos, lembretes da rotina, mensagem diária e avisos do foco). As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
 
 ## Como rodar
 
@@ -141,7 +141,8 @@ O modo discreto troca o nome do vício por um texto genérico na tela bloqueada.
 - **Modo discreto**: o texto do marco não cita o vício.
 - **Permissões**: o app pede a permissão de notificações uma vez por abertura quando ela ainda não foi decidida. No Perfil, se o sistema bloqueou as notificações ou negou o alarme exato (Android 12+), aparece um aviso com o botão certo. Sem o alarme exato os avisos continuam, só podem atrasar alguns minutos.
 - **Canais do Android**: "Lembretes da rotina", "Marcos e mensagem diária" e "Foco e pausas", que dá para silenciar separadamente nos ajustes do sistema.
-- **Não implementado**: o texto "Após recaída" da tabela acima ainda não é enviado, e o iOS limita a 64 agendamentos (o Android, plataforma inicial, não).
+- **Após recaída**: duas horas depois de registrar uma recaída (ou às 8h, se cair entre 22h e 8h), chega "{username}, recomeçar faz parte. Hoje é o dia 1 de novo.". O texto nunca cita o vício. Sai da diferença entre o início da contagem e `quit_at`, então é recalculado como o resto e não repete depois de enviado.
+- **Limite conhecido**: o iOS limita a 64 agendamentos (o Android, plataforma inicial, não).
 
 ## Modelo de dados (SQLite, `rumo.db`)
 
@@ -207,7 +208,7 @@ seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 - [x] SQLiteProvider, migration 001 e repositories
 - [x] Perfil: nome de usuário e onboarding
 - [x] Vícios: cadastro, contador, recaída e exclusão (as notificações de marco entram com as notificações locais)
-- [x] Notificações locais com `{username}` (marcos, mensagem diária, modo discreto, permissão de alarme exato)
+- [x] Notificações locais com `{username}` (marcos, mensagem diária, mensagem após recaída, modo discreto, permissão de alarme exato)
 - [x] Rotina: visão por dia da semana, bloco em andamento, criação, edição e exclusão de blocos, tarefas e metas
 - [x] Lembrete 10 minutos antes de cada bloco (ajustável por bloco; 0 desliga)
 - [x] Pomodoro fixo 25/5/15: temporizador, sessões gravadas no banco e opção perguntar/automático
