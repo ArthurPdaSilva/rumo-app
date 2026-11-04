@@ -1,0 +1,48 @@
+{
+	"expo": {
+		"name": "Rumo",
+		"slug": "rumo",
+		"version": "0.1.0",
+		"orientation": "portrait",
+		"icon": "./assets/images/icon.png",
+		"scheme": "rumo",
+		"userInterfaceStyle": "automatic",
+		"ios": {
+			"supportsTablet": false,
+			"bundleIdentifier": "com.arthurpsilva.rumo"
+		},
+		"android": {
+			"package": "com.arthurpsilva.rumo",
+			"adaptiveIcon": {
+				"backgroundColor": "#E6F4FE",
+				"foregroundImage": "./assets/images/android-icon-foreground.png",
+				"backgroundImage": "./assets/images/android-icon-background.png",
+				"monochromeImage": "./assets/images/android-icon-monochrome.png"
+			},
+			"predictiveBackGestureEnabled": false,
+			"permissions": [
+				"android.permission.POST_NOTIFICATIONS",
+				"android.permission.SCHEDULE_EXACT_ALARM",
+				"android.permission.RECEIVE_BOOT_COMPLETED",
+				"android.permission.VIBRATE"
+			]
+		},
+		"plugins": [
+			"expo-router",
+			[
+				"expo-splash-screen",
+				{
+					"backgroundColor": "#0F766E",
+					"image": "./assets/images/splash-icon.png",
+					"imageWidth": 76
+				}
+			],
+			"expo-sqlite",
+			["expo-notifications", { "color": "#0F766E" }]
+		],
+		"experiments": {
+			"typedRoutes": true,
+			"reactCompiler": true
+		}
+	}
+}
