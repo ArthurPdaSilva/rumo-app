@@ -27,6 +27,14 @@ export default function RootLayout() {
 					options={{ ...headerOptions, title: "Vício" }}
 				/>
 				<Stack.Screen
+					name="blocks/new"
+					options={{ ...headerOptions, title: "Novo bloco" }}
+				/>
+				<Stack.Screen
+					name="blocks/[id]"
+					options={{ ...headerOptions, title: "Editar bloco" }}
+				/>
+				<Stack.Screen
 					name="data"
 					options={{ ...headerOptions, title: "Importar e backup" }}
 				/>

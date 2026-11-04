@@ -14,6 +14,8 @@ import type {
 	TransferPreview,
 } from "@/features/dataTransfer/types";
 import { useAddictionStore } from "@/features/addictions/stores/AddictionStore";
+import { useFocusStore } from "@/features/focus/stores/FocusStore";
+import { useRoutineStore } from "@/features/routine/stores/RoutineStore";
 import { useProfileStore } from "@/features/profile/stores/ProfileStore";
 
 interface DataTransferState {
@@ -51,6 +53,8 @@ export const useDataTransferStore = create<DataTransferState>((set, get) => ({
 			details: {},
 			isLoaded: false,
 		});
+		useRoutineStore.setState({ isLoaded: false });
+		useFocusStore.getState().reset();
 		await useProfileStore.getState().load(db);
 		return true;
 	},

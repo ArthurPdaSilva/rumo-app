@@ -1,14 +1,17 @@
 import { render, screen } from "@testing-library/react-native";
-import { FocusScreen } from "../../features/focus/screens/FocusScreen";
-import { RoutineScreen } from "../../features/routine/screens/RoutineScreen";
+import { ScreenPlaceholder } from "../../components/ScreenPlaceholder";
 
-describe("telas iniciais", () => {
-	test.each([
-		["Rotina", RoutineScreen],
-		["Foco", FocusScreen],
-	] as const)("%s mostra o título", async (title, Screen) => {
-		await render(<Screen />);
+describe("ScreenPlaceholder", () => {
+	test("mostra título e descrição", async () => {
+		await render(
+			<ScreenPlaceholder
+				icon="timer-outline"
+				title="Em breve"
+				description="Esta tela ainda será construída."
+			/>,
+		);
 
-		expect(screen.getByText(title)).toBeTruthy();
+		expect(screen.getByText("Em breve")).toBeTruthy();
+		expect(screen.getByText("Esta tela ainda será construída.")).toBeTruthy();
 	});
 });

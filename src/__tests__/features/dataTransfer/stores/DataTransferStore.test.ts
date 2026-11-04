@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { migrateDatabase } from "../../../../database/client";
 import { useAddictionStore } from "../../../../features/addictions/stores/AddictionStore";
 import { useDataTransferStore } from "../../../../features/dataTransfer/stores/DataTransferStore";
+import { useRoutineStore } from "../../../../features/routine/stores/RoutineStore";
 import { useProfileStore } from "../../../../features/profile/stores/ProfileStore";
 import {
 	createTestDatabase,
@@ -26,6 +27,7 @@ describe("useDataTransferStore", () => {
 	beforeEach(() => {
 		useDataTransferStore.setState({ preview: null, pending: null });
 		useAddictionStore.setState({ addictions: [], details: {}, isLoaded: true });
+		useRoutineStore.setState({ isLoaded: true });
 	});
 
 	test("prepare mostra o preview sem gravar", async () => {
@@ -54,6 +56,7 @@ describe("useDataTransferStore", () => {
 		expect(applied).toBe(true);
 		expect(useDataTransferStore.getState().preview).toBeNull();
 		expect(useAddictionStore.getState().isLoaded).toBe(false);
+		expect(useRoutineStore.getState().isLoaded).toBe(false);
 		const count = await db.getFirstAsync<{ total: number }>(
 			"SELECT COUNT(*) AS total FROM routine_blocks",
 		);

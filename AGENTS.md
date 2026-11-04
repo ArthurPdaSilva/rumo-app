@@ -15,7 +15,7 @@ src/
     routine/       # Rotinas e cronograma semanal
     profile/       # Nome de usuário e preferências de notificação
     notifications/ # Agendamento de notificações locais
-    pomodoro/      # Temporizador de foco, pausas e histórico de sessões
+    focus/         # Temporizador de foco (25/5/15), sessões e progresso das metas
     dataTransfer/  # Importação e backup em um único arquivo .db
   app/           # Rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/        # Design tokens

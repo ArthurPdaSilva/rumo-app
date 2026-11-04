@@ -4,7 +4,7 @@ Aplicativo React Native (Expo) para acompanhar vícios e organizar rotinas. É *
 
 ## Status
 
-Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 176 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) e as abas Rotina e Foco ainda como telas vazias. As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
+Nome definitivo: **Rumo**. O projeto Expo está criado e validado (typecheck, Biome, 263 testes e export do bundle Android). Já existem o banco com a migration inicial, os repositories de perfil e vícios, o cálculo de dias sem ceder, o toast de confirmação, o **onboarding, a tela de Perfil e a tela de Vícios** (lista, cadastro, detalhe, recaída e exclusão), a **importação e o backup em `.db`** (um formato só, com pré-visualização) a **tela de Rotina** (dia, tarefas e metas, com criação e edição de blocos) e a **tela de Foco** (Pomodoro 25/5/15, histórico de sessões e progresso das metas semanais). As funcionalidades das telas vêm nas próximas etapas do roadmap. Os documentos de contexto estão em [`AGENTS.md`](AGENTS.md) e os arquivos de exemplo em [`seed/`](seed).
 
 ## Como rodar
 
@@ -59,10 +59,10 @@ Login, sincronização em nuvem, backend, ranking ou comunidade, anúncios, iOS 
 
 Importar e fazer backup usam **o mesmo arquivo**: um banco SQLite com o mesmo esquema do `rumo.db` (extensão `.db`). Não há mais importação direta de `.md` dentro do app.
 
-| Arquivo                | O que tem                                                                  | Como o app trata                                              |
-| ---------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `seed/rumo-seed.db`    | Rotina (59 blocos), tarefas (80) e metas semanais (16), gerado dos `.md`   | **Arquivo de plano**: substitui só rotina, tarefas e metas    |
-| Backup (`rumo-backup-AAAA-MM-DD-HHMM.db`) | Tudo: perfil, preferências, vícios, recaídas, rotina, tarefas, metas e sessões | **Backup completo**: o app fica igual ao arquivo |
+| Arquivo                                   | O que tem                                                                      | Como o app trata                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| `seed/rumo-seed.db`                       | Rotina (59 blocos), tarefas (80) e metas semanais (16), gerado dos `.md`       | **Arquivo de plano**: substitui só rotina, tarefas e metas |
+| Backup (`rumo-backup-AAAA-MM-DD-HHMM.db`) | Tudo: perfil, preferências, vícios, recaídas, rotina, tarefas, metas e sessões | **Backup completo**: o app fica igual ao arquivo           |
 
 Os `.md` continuam em [`seed/`](seed) como **fonte de edição**. Para atualizar o plano, edite os `.md` e rode:
 
@@ -92,12 +92,30 @@ Regras de leitura dos `.md` (usadas só pelo script):
 - Blocos importados ganham o lembrete padrão de 10 minutos antes. O agendamento em si vem com as notificações locais.
 - A tabela `imports` e as colunas `import_id` ficam reservadas e hoje não são usadas.
 
+### Como a Rotina funciona hoje
+
+- A aba **Rotina** tem três partes: **Dia**, **Tarefas** e **Metas**.
+- **Dia**: seletor de Dom a Sáb (abre no dia de hoje) e a lista dos blocos daquele dia, por horário. Em hoje, o bloco em andamento aparece destacado com "Agora" e o primeiro que ainda vai começar com "Próximo"; os já passados ficam esmaecidos. Blocos que terminam às 00:00 valem até o fim do dia, e um bloco sem horário de fim vale até o início do seguinte.
+- **Criar e editar blocos** (`/blocks/new` e `/blocks/[id]`): nome, início, fim opcional, dias da semana, lembrete em minutos antes (padrão 10; 0 desliga) e anotações. Excluir pede confirmação. Os blocos importados e os criados à mão são tratados igual.
+- **Tarefas**: agrupadas por seção com contagem (ex.: "Português (1/13)"); tocar marca ou desmarca, com toast. O estado concluído sobrevive a reimportar um arquivo de plano.
+- **Metas**: horas por semana de cada atividade, com a observação do arquivo. O progresso real (tempo feito no Pomodoro) aparece na aba Foco.
+- Importar um arquivo `.db` recarrega a Rotina automaticamente.
+
 ### Como o Perfil funciona hoje
 
 - Na primeira abertura, se não houver nome de usuário, o app leva ao **onboarding** (`/onboarding`), onde a pessoa escolhe o nome (2 a 24 caracteres).
 - A aba **Perfil** permite editar o nome e o horário da mensagem diária (`HH:MM`), ligar ou desligar as notificações e ativar o modo discreto. Cada ação mostra um toast de confirmação ou de erro.
 - O botão "Abrir importação e backup" leva à tela `/data`, descrita em "Como a importação e o backup funcionam hoje".
 - As preferências já ficam salvas em `profile`; o agendamento das notificações que as usa entra na etapa de notificações.
+
+### Como o Foco funciona hoje
+
+- **Tempos fixos**: 25 min de foco, 5 de pausa e 15 de pausa longa depois de 4 focos. Ao acabar um foco a pausa começa sozinha; ao acabar a pausa o app espera você iniciar o próximo foco. Os quatro pontinhos mostram o ciclo.
+- **No que focar**: o bloco da rotina em andamento (se houver) vem selecionado, seguido das atividades das metas semanais e das seções de tarefas; "Foco livre" não conta para nenhuma meta. Dá para escolher uma tarefa aberta da atividade.
+- **O relógio usa horário, não contagem de ticks**: se o app ficar em segundo plano, ao voltar a fase vencida é fechada com a duração certa. O aviso sonoro com o app fechado depende das notificações locais, que ainda não existem.
+- **Só o foco é gravado** em `pomodoro_sessions`, com `activity`, bloco e tarefa. Foco cancelado fica com `completed = 0` e não conta. Se o app for fechado no meio de um foco, a sessão aberta é encerrada na próxima abertura sem contar tempo.
+- **Metas**: o progresso da semana (segunda a domingo) soma os minutos de focos concluídos por atividade, comparando o nome da atividade com o da meta.
+- **Fim do foco com tarefa**: no modo `ask` o app pergunta se concluiu; em `auto_complete` marca como feita. A chave fica na própria tela de Foco.
 
 ## Notificações personalizadas
 
@@ -132,19 +150,19 @@ Dias sem ceder = agora − (última recaída ou `quit_at`). Nenhum contador é g
 
 ## Stack e ferramentas
 
-| Camada         | Escolha                                                                                                                      |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Base           | Expo + React Native + TypeScript estrito, com development build (`expo-dev-client`); versão do SDK fixada ao criar o projeto |
-| Navegação      | Expo Router (rotas por arquivo em `src/app/`, abas e pilhas, rotas tipadas)                                                  |
-| Dados          | `expo-sqlite` (`rumo.db`) com migrations por `PRAGMA user_version` e repositories com SQL                                    |
-| Estado         | Zustand                                                                                                                      |
-| Formulários    | React Hook Form + Zod                                                                                                        |
-| Notificações   | `expo-notifications` (somente locais)                                                                                        |
+| Camada            | Escolha                                                                                                                                 |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Base              | Expo + React Native + TypeScript estrito, com development build (`expo-dev-client`); versão do SDK fixada ao criar o projeto            |
+| Navegação         | Expo Router (rotas por arquivo em `src/app/`, abas e pilhas, rotas tipadas)                                                             |
+| Dados             | `expo-sqlite` (`rumo.db`) com migrations por `PRAGMA user_version` e repositories com SQL                                               |
+| Estado            | Zustand                                                                                                                                 |
+| Formulários       | React Hook Form + Zod                                                                                                                   |
+| Notificações      | `expo-notifications` (somente locais)                                                                                                   |
 | Importar e backup | `.db` único: `expo-document-picker`, `expo-file-system`, `expo-sharing` e `expo-sqlite` (`serializeAsync` / `deserializeDatabaseAsync`) |
-| Datas          | `date-fns` com locale pt-BR                                                                                                  |
-| UI             | `StyleSheet` com design tokens, `@expo/vector-icons`, componente de toast reaproveitado do VCampos                           |
-| Qualidade      | Biome, `tsc`, Jest + React Native Testing Library, GitHub Actions                                                            |
-| Build          | EAS Build (AAB para Android); iOS depois                                                                                     |
+| Datas             | `date-fns` com locale pt-BR                                                                                                             |
+| UI                | `StyleSheet` com design tokens, `@expo/vector-icons`, componente de toast reaproveitado do VCampos                                      |
+| Qualidade         | Biome, `tsc`, Jest + React Native Testing Library, GitHub Actions                                                                       |
+| Build             | EAS Build (AAB para Android); iOS depois                                                                                                |
 
 ### Alarmes no Android 14+
 
@@ -161,7 +179,7 @@ src/
     routine/
     profile/
     notifications/
-    pomodoro/
+    focus/
     dataTransfer/
   app/                 rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/
@@ -178,14 +196,17 @@ seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 - [x] Perfil: nome de usuário e onboarding
 - [x] Vícios: cadastro, contador, recaída e exclusão (as notificações de marco entram com as notificações locais)
 - [ ] Notificações locais com `{username}`
-- [ ] Rotina: grade semanal, visão do dia, edição de blocos e lembrete 10 min antes
-- [ ] Pomodoro fixo 25/5/15: temporizador, notificações em segundo plano, histórico de sessões e opção perguntar/automático
-- [ ] Metas semanais de horas com progresso vindo do Pomodoro
+- [x] Rotina: visão por dia da semana, bloco em andamento, criação, edição e exclusão de blocos, tarefas e metas
+- [ ] Lembrete 10 minutos antes de cada bloco (vem com as notificações locais)
+- [x] Pomodoro fixo 25/5/15: temporizador, sessões gravadas no banco e opção perguntar/automático
+- [ ] Aviso de fim de foco e de pausa com o app em segundo plano (vem com as notificações locais)
+- [x] Metas semanais de horas com progresso vindo do Pomodoro
 - [x] Conversor de `.md` em `.db` (`npm run seed:build`) com testes sobre os arquivos de `seed/`
 - [x] Importação de `.db` com pré-visualização e preenchimento automático do perfil (rotina, tarefas e metas semanais)
 - [x] Tarefas importadas das listas `- [ ]` (a tela para ver e marcar as tarefas vem com a Rotina)
 - [x] Backup e restauração em um único arquivo `.db` (mesmo formato da importação)
-- [ ] Modo escuro, ícone e splash
+- [x] Ícone (letra R com seta) e splash
+- [ ] Modo escuro: revisão visual das telas
 
 ## Decisões tomadas
 
@@ -220,3 +241,7 @@ Os testes de banco usam um SQLite real em memória (`node:sqlite`, Node 22 ou su
 ## Licença
 
 A licença do projeto ainda será definida.
+
+## Ícone do app
+
+Letra **R** em branco, com a perna em turquoise terminando em seta para a direita ("seguir em frente"), sobre gradiente teal (`#14938A` → `#0B5A55`) e acento `#2DD4BF`. Os arquivos em `assets/images/` são `icon`, `android-icon-{foreground,background,monochrome}`, `splash-icon` e `favicon`. O adaptive icon usa fundo `#0F766E`; o ícone temático (monochrome) é o R em silhueta. Para ver o ícone novo é preciso gerar um novo development build (`npm run android`).
