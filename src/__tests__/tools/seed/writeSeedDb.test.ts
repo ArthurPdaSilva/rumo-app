@@ -25,7 +25,7 @@ describe("writeSeedDb", () => {
 			new Uint8Array(readFileSync(path)),
 		);
 
-		expect(data.routineBlocks).toHaveLength(59);
+		expect(data.routineBlocks).toHaveLength(71);
 		expect(data.tasks).toHaveLength(80);
 		expect(data.weeklyGoals).toHaveLength(16);
 		rmSync(dir, { recursive: true, force: true });

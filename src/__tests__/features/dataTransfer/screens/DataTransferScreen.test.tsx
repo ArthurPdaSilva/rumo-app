@@ -58,7 +58,7 @@ describe("DataTransferScreen", () => {
 
 		await fireEvent.press(screen.getByText("Escolher arquivo .db"));
 		expect(await screen.findByText("rumo-seed.db")).toBeTruthy();
-		expect(screen.getByText("Blocos de rotina: 59")).toBeTruthy();
+		expect(screen.getByText("Blocos de rotina: 71")).toBeTruthy();
 		expect(screen.getByText("Tarefas: 80")).toBeTruthy();
 		expect(screen.getByText("Metas semanais: 16")).toBeTruthy();
 

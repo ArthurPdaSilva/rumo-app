@@ -19,7 +19,7 @@ Informática cai porque você já domina a prática. Português fica no topo, ma
 
 Acordar às **08:00 nos dias úteis** (junto com a esposa) e às **08:30 no fim de semana**, no máximo 30 min de diferença para não desregular o sono. Dormir por volta de 00:00; no domingo, um pouco antes (~23:30), para preparar a segunda.
 
-O ciclo tem 23 blocos (18 de 1h e 5 de 30 min, 20h30 no total) e fecha uma vez por semana: segunda a sexta com 3 blocos de 1h (1 a 15), sábado com 3 de 1h (16 a 18) e domingo com os 5 de 30 min (19 a 23). A ordem é contínua: se um bloco ficar pendente, o dia seguinte começa por ele. Dentro do dia, a matéria mais difícil vai no Concurso 1, no pico de energia. Ao terminar o bloco 23, registre o ciclo no Histórico do ciclo e comece o próximo.
+O ciclo tem 23 blocos (18 de 1h e 5 de 30 min, 20h30 no total) e fecha uma vez por semana: segunda a sexta com 3 blocos de 1h (1 a 15), sábado com 3 de 1h (16 a 18) e domingo com os 5 de 30 min (19 a 23). A ordem é contínua: se um bloco ficar pendente, o dia seguinte começa por ele. Dentro do dia, a matéria mais difícil vai no primeiro bloco, no pico de energia. Ao terminar o bloco 23, registre o ciclo no Histórico do ciclo e comece o próximo.
 
 Segunda a quinta têm só matérias do núcleo; as complementares ocupam quatro vagas, na sexta, no sábado e duas no domingo.
 
@@ -50,7 +50,7 @@ Nesses blocos use só o material mais curto (mapas da Lulu ou resumos) e faça q
 
 ## Dia útil (segunda a sexta)
 
-Três blocos de concurso por dia, com o Concurso 1 no pico de energia e o Concurso 3 sempre começando por questões.
+Três blocos de concurso por dia (09:40, 11:00 e 14:00), com a matéria de cada um nas tabelas por dia logo abaixo. O primeiro fica no pico de energia e o das 14:00 sempre começa por questões.
 
 | Horário     | Atividade                                                                            |
 | ----------- | ------------------------------------------------------------------------------------ |
@@ -58,12 +58,9 @@ Três blocos de concurso por dia, com o Concurso 1 no pico de energia e o Concur
 | 08:30–08:50 | Caminhada ou mobilidade                                                              |
 | 08:50–09:20 | Candidaturas (timer de 30 min)                                                       |
 | 09:20–09:40 | Revisão dos erros de ontem + flashcards                                              |
-| 09:40–10:40 | Concurso 1 (a matéria mais difícil do dia)                                           |
 | 10:40–11:00 | Pausa longa, fora da tela                                                            |
-| 11:00–12:00 | Concurso 2                                                                           |
 | 12:00–13:30 | Almoço e descanso                                                                    |
 | 13:30–14:00 | Projetos e programação (30 min)                                                      |
-| 14:00–15:00 | Concurso 3 (começa por questões, não por teoria)                                     |
 | 15:00–15:15 | Pausa                                                                                |
 | 15:15–16:15 | Inglês                                                                               |
 | 16:15–16:30 | Pausa                                                                                |
@@ -76,6 +73,46 @@ Três blocos de concurso por dia, com o Concurso 1 no pico de energia e o Concur
 | 21:05–23:00 | Lazer e descanso, sem estudo                                                         |
 | 23:00–23:30 | Leitura antes de dormir                                                              |
 | 23:30–00:00 | Desacelerar, luz baixa, sem tela. Dormir por volta das 00:00                         |
+
+### Concurso na segunda
+
+| Horário | Atividade |
+| ------- | --------- |
+| 09:40–10:40 | Português |
+| 11:00–12:00 | Direito Constitucional |
+| 14:00–15:00 | Raciocínio Lógico |
+
+### Concurso na terça
+
+| Horário | Atividade |
+| ------- | --------- |
+| 09:40–10:40 | Direito Administrativo |
+| 11:00–12:00 | Matemática Básica |
+| 14:00–15:00 | Português |
+
+### Concurso na quarta
+
+| Horário | Atividade |
+| ------- | --------- |
+| 09:40–10:40 | Informática |
+| 11:00–12:00 | Direito Constitucional |
+| 14:00–15:00 | Raciocínio Lógico |
+
+### Concurso na quinta
+
+| Horário | Atividade |
+| ------- | --------- |
+| 09:40–10:40 | Português |
+| 11:00–12:00 | Direito Administrativo |
+| 14:00–15:00 | Matemática Básica |
+
+### Concurso na sexta
+
+| Horário | Atividade |
+| ------- | --------- |
+| 09:40–10:40 | Direito Constitucional |
+| 11:00–12:00 | Direito Administrativo |
+| 14:00–15:00 | Complementares (Adm. Geral, Adm. Pública, AFO, Arquivologia) |
 
 ## Sábado
 
@@ -155,7 +192,7 @@ A estrutura troca de tipo de tarefa a cada 25 minutos, o que dá novidade e ajud
 | 30–55   | **Teoria ou videoaula dirigida pelo que você errou**, não pelo que o material manda em ordem                   |
 | 55–60   | **Resumo ativo**: feche tudo e escreva ou diga em voz alta o que lembra. Marque o checklist do bloco no Notion |
 
-- No **Concurso 3** (14:00, sonolência pós-almoço), começar por questões é obrigatório.
+- No bloco das **14:00** (sonolência pós-almoço), começar por questões é obrigatório.
 - Se um bloco estiver muito pesado, é melhor encurtar a teoria do que pular as questões.
 
 ### Bloco de 30 min do concurso (domingo)

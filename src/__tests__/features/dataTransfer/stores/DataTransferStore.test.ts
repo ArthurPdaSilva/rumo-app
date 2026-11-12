@@ -37,7 +37,7 @@ describe("useDataTransferStore", () => {
 			.getState()
 			.prepare(db, openTestRumoFile, seedFile());
 
-		expect(preview.lines.map((line) => line.incoming)).toEqual([59, 80, 16]);
+		expect(preview.lines.map((line) => line.incoming)).toEqual([71, 80, 16]);
 		const count = await db.getFirstAsync<{ total: number }>(
 			"SELECT COUNT(*) AS total FROM tasks",
 		);
@@ -60,7 +60,7 @@ describe("useDataTransferStore", () => {
 		const count = await db.getFirstAsync<{ total: number }>(
 			"SELECT COUNT(*) AS total FROM routine_blocks",
 		);
-		expect(count?.total).toBe(59);
+		expect(count?.total).toBe(71);
 		db.close();
 	});
 

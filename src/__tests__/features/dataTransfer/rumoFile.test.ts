@@ -20,7 +20,7 @@ describe("readRumoFile", () => {
 	test("lê o rumo-seed.db: rotina, tarefas e metas, sem perfil nem vícios", async () => {
 		const data = await readRumoFile(openTestRumoFile, seedBytes());
 
-		expect(data.routineBlocks).toHaveLength(59);
+		expect(data.routineBlocks).toHaveLength(71);
 		expect(data.tasks).toHaveLength(80);
 		expect(data.weeklyGoals).toHaveLength(16);
 		expect(data.addictions).toEqual([]);

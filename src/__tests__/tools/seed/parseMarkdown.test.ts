@@ -183,12 +183,22 @@ describe("arquivos de exemplo (seed/)", () => {
 		expect(workdays.length).toBeGreaterThan(15);
 		expect(saturday.length).toBeGreaterThan(10);
 		expect(sunday.length).toBeGreaterThan(10);
+		// Os blocos de concurso trazem a matéria de cada dia, sem "Concurso 1/2/3".
 		expect(parsed.routineBlocks).toContainEqual({
-			weekdays: 62,
+			weekdays: 2,
 			startTime: "09:40",
 			endTime: "10:40",
-			title: "Concurso 1 (a matéria mais difícil do dia)",
+			title: "Português",
 		});
+		expect(parsed.routineBlocks).toContainEqual({
+			weekdays: 4,
+			startTime: "11:00",
+			endTime: "12:00",
+			title: "Matemática Básica",
+		});
+		expect(
+			parsed.routineBlocks.some((b) => /^Concurso [123]\b/.test(b.title)),
+		).toBe(false);
 		expect(parsed.tasks).toEqual([]);
 
 		const goal = (name: string) =>
