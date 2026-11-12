@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 
 export interface PickedRumoFile {
@@ -6,16 +5,16 @@ export interface PickedRumoFile {
 	bytes: Uint8Array;
 }
 
-/** Abre o seletor de arquivos e devolve o `.db`, ou `null` se cancelar. */
+/**
+ * Abre o seletor de arquivos e devolve o `.db`, ou `null` se cancelar.
+ *
+ * Usa o seletor do próprio expo-file-system: o arquivo escolhido já vem com
+ * permissão de leitura, o que o `expo-document-picker` + `new File(uri)` não
+ * garantia (dava "Missing 'READ' permission" no Android).
+ */
 export async function pickRumoFile(): Promise<PickedRumoFile | null> {
-	const result = await DocumentPicker.getDocumentAsync({
-		type: "*/*",
-		copyToCacheDirectory: true,
-		multiple: false,
-	});
-	if (result.canceled) return null;
-	const asset = result.assets[0];
-	if (!asset) return null;
-	const bytes = await new File(asset.uri).bytes();
-	return { name: asset.name, bytes };
+	const picked = await File.pickFileAsync();
+	if (picked.canceled) return null;
+	const file = picked.result;
+	return { name: file.name, bytes: await file.bytes() };
 }

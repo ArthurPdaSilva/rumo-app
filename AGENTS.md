@@ -16,6 +16,7 @@ src/
     profile/       # Nome de usuário e preferências de notificação
     notifications/ # Agendamento de notificações locais
     focus/         # Temporizador de foco (25/5/15), sessões e progresso das metas
+    calendar/      # Envio da rotina para a agenda do aparelho (expo-calendar)
     dataTransfer/  # Importação e backup em um único arquivo .db
   app/           # Rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/        # Design tokens
@@ -29,7 +30,7 @@ App.tsx          # Raiz do app
 
 ## Stack
 
-Expo + React Native + TypeScript estrito (development build), Expo Router, `expo-sqlite`, Zustand, React Hook Form + Zod, `expo-notifications`, `expo-document-picker` + `expo-file-system`, `date-fns` (pt-BR), Biome, Jest + React Native Testing Library, EAS Build. Detalhes no `README.md`.
+Expo + React Native + TypeScript estrito (development build), Expo Router, `expo-sqlite`, Zustand, React Hook Form + Zod, `expo-notifications`, `expo-file-system` (inclui o seletor de arquivos), `date-fns` (pt-BR), Biome, Jest + React Native Testing Library, EAS Build. Detalhes no `README.md`.
 
 ## Convenções de Código
 
@@ -66,6 +67,7 @@ Expo + React Native + TypeScript estrito (development build), Expo Router, `expo
 - Sem autenticação, Firebase, analytics, anúncios ou qualquer chamada de rede
 - A abertura depende apenas da hidratação do SQLite
 - Notificações são **locais** (`expo-notifications`), agendadas no aparelho
+- A integração com o Google Agenda usa a **agenda do aparelho** (`expo-calendar`), sem OAuth, API do Google ou rede; só `calendarClient.ts` importa `expo-calendar`
 - Importação e backup usam o seletor de arquivos e a folha de compartilhamento do sistema; o `.db` é lido e gravado localmente e nunca enviado
 
 ### Importação e backup (.db)
@@ -92,6 +94,14 @@ Expo + React Native + TypeScript estrito (development build), Expo Router, `expo
 
 - O temporizador guarda o horário de término (timestamp), não um contador em memória, para continuar correto com o app em segundo plano
 - Fim de foco e de pausa são agendados como notificações locais ao iniciar a sessão
+- A fase em andamento é persistida em `pomodoro_active` (início, duração, pausa acumulada) e restaurada ao abrir o app; pausa usa `paused_at_ms`/`paused_total_ms` e os minutos gravados descontam `paused_ms`
+- A notificação fixa "Foco em andamento" (canal `focusLive`) divide o identificador com o aviso de fim (`pomodoro:focus-end`/`pomodoro:break-end`); os botões Pausar/Retomar/Encerrar agem só no banco, são idempotentes e rodam também em segundo plano via `expo-task-manager` (`index.ts` é o `main` do app e importa `pomodoroBackgroundTask`)
+
+### Agenda (Google Agenda via aparelho)
+
+- Um evento por (bloco, dia da semana), porque o Android só aceita `FREQ=WEEKLY;INTERVAL=1` sem `BYDAY`
+- `calendar_events` mapeia (bloco, dia) → evento com uma assinatura; a sincronização é idempotente (cria, troca, remove, recria o que sumiu) e nunca toca em eventos que o Rumo não criou
+- Toda ação da tela de Agenda mostra toast; o gateway é injetado em `calendarSync.ts` para testar sem módulo nativo
 - Sessões concluídas alimentam o progresso das metas semanais (`weekly_goals`)
 - Tempos fixos na primeira versão, como constantes em `types.ts`: foco 25 min, pausa 5 min, pausa longa 15 min a cada 4 ciclos
 - Ao fim de um foco ligado a uma tarefa, a preferência `pomodoro_on_focus_end` decide: `ask` (padrão, pergunta se concluiu) ou `auto_complete` (marca como feita); a opção fica em Configurações

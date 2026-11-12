@@ -1,10 +1,14 @@
 import { migrateDatabase } from "../../../database/client";
 import {
 	abandonOpenSessions,
+	type ActivePhaseRow,
+	clearActivePhase,
 	finishFocusSession,
+	getActivePhase,
 	getFocusStats,
 	getMinutesByActivity,
 	getOnFocusEnd,
+	saveActivePhase,
 	setOnFocusEnd,
 	startFocusSession,
 } from "../../../database/repositories/pomodoroRepository";
@@ -83,5 +87,98 @@ describe("pomodoroRepository", () => {
 		await setOnFocusEnd(db, "auto_complete");
 		expect(await getOnFocusEnd(db)).toBe("auto_complete");
 		db.close();
+	});
+
+	test("o tempo em pausa é descontado dos minutos de foco", async () => {
+		const db = await setup();
+		const id = await startFocusSession(db, {
+			startedAt: "2026-11-04T12:00:00.000Z",
+			activity: "Português",
+			routineBlockId: null,
+			taskId: null,
+		});
+		// 55 min de relógio, 30 deles pausados: 25 min de foco de verdade.
+		await finishFocusSession(
+			db,
+			id,
+			"2026-11-04T12:55:00.000Z",
+			true,
+			30 * 60_000,
+		);
+
+		expect(await getFocusStats(db, from, to)).toEqual({
+			sessions: 1,
+			minutes: 25,
+		});
+		expect(await getMinutesByActivity(db, from, to)).toEqual({ Português: 25 });
+		db.close();
+	});
+
+	describe("fase ativa", () => {
+		const phase: ActivePhaseRow = {
+			kind: "focus",
+			startedAtMs: 1_000,
+			durationMs: 1_500_000,
+			sessionId: null,
+			activity: "Português",
+			routineBlockId: null,
+			taskId: 7,
+			pausedAtMs: null,
+			pausedTotalMs: 0,
+			cycleCount: 2,
+		};
+
+		test("sem fase ativa devolve null", async () => {
+			const db = await setup();
+			expect(await getActivePhase(db)).toBeNull();
+			db.close();
+		});
+
+		test("guarda, lê, substitui e limpa a fase (sempre uma só)", async () => {
+			const db = await setup();
+			await saveActivePhase(db, phase);
+			expect(await getActivePhase(db)).toEqual(phase);
+
+			const paused = { ...phase, pausedAtMs: 5_000, pausedTotalMs: 800 };
+			await saveActivePhase(db, paused);
+			expect(await getActivePhase(db)).toEqual(paused);
+			const count = await db.getFirstAsync<{ total: number }>(
+				"SELECT COUNT(*) AS total FROM pomodoro_active",
+			);
+			expect(count?.total).toBe(1);
+
+			await clearActivePhase(db);
+			expect(await getActivePhase(db)).toBeNull();
+			db.close();
+		});
+
+		test("abandonOpenSessions poupa a sessão que a fase ativa reivindica", async () => {
+			const db = await setup();
+			const mine = await startFocusSession(db, {
+				startedAt: "2026-11-04T12:00:00.000Z",
+				activity: null,
+				routineBlockId: null,
+				taskId: null,
+			});
+			const orphan = await startFocusSession(db, {
+				startedAt: "2026-11-04T09:00:00.000Z",
+				activity: null,
+				routineBlockId: null,
+				taskId: null,
+			});
+			await saveActivePhase(db, { ...phase, sessionId: mine });
+
+			await abandonOpenSessions(db);
+
+			const rows = await db.getAllAsync<{
+				id: number;
+				ended_at: string | null;
+			}>("SELECT id, ended_at FROM pomodoro_sessions ORDER BY id");
+			expect(rows.find((row) => row.id === mine)?.ended_at).toBeNull();
+			expect(rows.find((row) => row.id === orphan)?.ended_at).toBe(
+				"2026-11-04T09:00:00.000Z",
+			);
+			db.close();
+		});
 	});
 });

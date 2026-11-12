@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import Toast from "react-native-toast-message";
 import { toastConfig } from "@/components/notifications";
 import { DATABASE_NAME, initializeDatabase } from "@/database/client";
+import { PomodoroSync } from "@/features/focus/components/PomodoroSync";
 import { NotificationSync } from "@/features/notifications/components/NotificationSync";
 import { useThemeColors } from "@/styles/theme";
 
@@ -19,6 +20,7 @@ export default function RootLayout() {
 		<SQLiteProvider databaseName={DATABASE_NAME} onInit={initializeDatabase}>
 			<StatusBar style="auto" />
 			<NotificationSync />
+			<PomodoroSync />
 			<Stack screenOptions={{ headerShown: false }}>
 				<Stack.Screen
 					name="addictions/new"
@@ -35,6 +37,10 @@ export default function RootLayout() {
 				<Stack.Screen
 					name="blocks/[id]"
 					options={{ ...headerOptions, title: "Editar bloco" }}
+				/>
+				<Stack.Screen
+					name="calendar"
+					options={{ ...headerOptions, title: "Agenda" }}
 				/>
 				<Stack.Screen
 					name="data"

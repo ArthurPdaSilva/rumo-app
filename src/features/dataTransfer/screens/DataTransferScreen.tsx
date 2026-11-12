@@ -16,6 +16,16 @@ import { useDataTransferStore } from "@/features/dataTransfer/stores/DataTransfe
 import { useThemeColors } from "@/styles/theme";
 import { borderRadius, fontSize, fontWeight, spacing } from "@/styles/tokens";
 
+/** Só a mensagem técnica, em dev; nunca o conteúdo do arquivo. */
+function logDevError(step: string, error: unknown) {
+	if (__DEV__) {
+		console.warn(
+			`[dataTransfer] falha ao ${step}:`,
+			error instanceof Error ? error.message : error,
+		);
+	}
+}
+
 export function DataTransferScreen() {
 	const db = useSQLiteContext();
 	const colors = useThemeColors();
@@ -36,6 +46,7 @@ export function DataTransferScreen() {
 				notification.info("Este arquivo não tem dados do Rumo para importar.");
 			}
 		} catch (error) {
+			logDevError("ler o arquivo", error);
 			if (error instanceof NewerRumoFileError) {
 				notification.error(
 					"Este arquivo veio de uma versão mais nova do app. Atualize o Rumo.",
@@ -57,7 +68,8 @@ export function DataTransferScreen() {
 			if (await confirm(db)) {
 				notification.success("Importação concluída.");
 			}
-		} catch {
+		} catch (error) {
+			logDevError("importar", error);
 			notification.error("Não foi possível importar. Nada foi alterado.");
 		} finally {
 			setBusy(false);

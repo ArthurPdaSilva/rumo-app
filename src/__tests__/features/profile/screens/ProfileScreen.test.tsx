@@ -154,4 +154,12 @@ describe("ProfileScreen", () => {
 
 		expect(mockPush).toHaveBeenCalledWith("/data");
 	});
+
+	test("o botão abre a integração com a agenda", async () => {
+		await render(<ProfileScreen />);
+
+		await fireEvent.press(screen.getByText("Abrir integração com a agenda"));
+
+		expect(mockPush).toHaveBeenCalledWith("/calendar");
+	});
 });

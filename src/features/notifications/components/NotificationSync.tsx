@@ -5,6 +5,7 @@ import { useAddictionStore } from "@/features/addictions/stores/AddictionStore";
 import {
 	configureNotifications,
 	createChannels,
+	registerPomodoroCategories,
 } from "@/features/notifications/notificationsClient";
 import { syncNotifications } from "@/features/notifications/syncNotifications";
 import { useProfileStore } from "@/features/profile/stores/ProfileStore";
@@ -22,6 +23,7 @@ export function NotificationSync() {
 	useEffect(() => {
 		configureNotifications();
 		createChannels().catch(() => undefined);
+		registerPomodoroCategories().catch(() => undefined);
 	}, []);
 
 	useEffect(() => {

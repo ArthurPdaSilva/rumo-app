@@ -47,9 +47,14 @@ O app usa módulos nativos (SQLite e notificações), então roda em development
 
 - Temporizador de foco integrado com tempos **fixos na primeira versão**: 25 min de foco, 5 de pausa e pausa longa de 15 min a cada 4 ciclos (o Cronograma importado também usa 25/5). Tempos configuráveis ficam para uma versão futura.
 - Pode ser iniciado a partir de um bloco da rotina ou de uma tarefa, e o tempo de foco conta para a meta semanal da atividade.
-- Notificação local ao fim de cada foco e de cada pausa, funcionando com o app em segundo plano.
+- Continua contando com o app minimizado ou fechado: a fase em andamento fica salva no banco com o horário de término. Uma notificação fixa mostra a fase e traz os botões **Pausar/Retomar** e **Encerrar**, e o aviso de fim de foco e de pausa chega mesmo sem o app aberto.
 - Ao terminar um foco ligado a uma tarefa, o app **pergunta** se ela foi concluída. Em Configurações há a opção "Ao concluir um foco": _Perguntar_ (padrão) ou _Marcar tarefa como feita automaticamente_.
 - Histórico de sessões por dia e por atividade.
+
+### 5. Google Agenda
+
+- Envia os blocos da rotina (nome, dias e horários) como eventos para a agenda do aparelho; o Android sincroniza essa agenda com o Google Agenda.
+- Sem login e sem rede no app: o Rumo escreve na agenda local via `expo-calendar` e não guarda a sua conta Google.
 
 ### Fora do escopo agora
 
@@ -112,7 +117,10 @@ Regras de leitura dos `.md` (usadas só pelo script):
 
 - **Tempos fixos**: 25 min de foco, 5 de pausa e 15 de pausa longa depois de 4 focos. Ao acabar um foco a pausa começa sozinha; ao acabar a pausa o app espera você iniciar o próximo foco. Os quatro pontinhos mostram o ciclo.
 - **No que focar**: o bloco da rotina em andamento (se houver) vem selecionado, seguido das atividades das metas semanais e das seções de tarefas; "Foco livre" não conta para nenhuma meta. Dá para escolher uma tarefa aberta da atividade.
-- **O relógio usa horário, não contagem de ticks**: se o app ficar em segundo plano, ao voltar a fase vencida é fechada com a duração certa. Com o app fechado, o aviso de fim de foco e de pausa chega como notificação local (agendada ao iniciar o foco).
+- **O relógio usa horário, não contagem de ticks**: a fase em andamento é gravada em `pomodoro_active` (início, duração, pausa acumulada). Ao reabrir o app, ou se o sistema o encerrar, ela é restaurada; fases vencidas são fechadas com a duração certa. O aviso de fim de foco e de pausa chega como notificação local agendada ao iniciar.
+- **Notificação com ações**: enquanto há uma fase em andamento, uma notificação fixa (canal silencioso "Foco em andamento") mostra o foco e o horário de término. Os botões **Pausar/Retomar** e **Encerrar** agem direto no banco, mesmo com o app fechado (tarefa em segundo plano do `expo-notifications`), e as ações são idempotentes. Ao pausar, o aviso de fim é cancelado e o tempo pausado não conta; ao retomar, o fim é reagendado.
+- **Encerrar** cancela o foco sem contar minutos (igual a cancelar na tela). Pausas são descontadas dos minutos gravados (`paused_ms`).
+- **Limite conhecido**: a notificação não tem contagem regressiva ao vivo, só o horário de término (ou "Pausado · faltam mm:ss"); no Android 14+ o usuário pode dispensá-la deslizando.
 - **Só o foco é gravado** em `pomodoro_sessions`, com `activity`, bloco e tarefa. Foco cancelado fica com `completed = 0` e não conta. Se o app for fechado no meio de um foco, a sessão aberta é encerrada na próxima abertura sem contar tempo.
 - **Metas**: o progresso da semana (segunda a domingo) soma os minutos de focos concluídos por atividade, comparando o nome da atividade com o da meta.
 - **Fim do foco com tarefa**: no modo `ask` o app pergunta se concluiu; em `auto_complete` marca como feita. A chave fica na própria tela de Foco.
@@ -144,6 +152,15 @@ O modo discreto troca o nome do vício por um texto genérico na tela bloqueada.
 - **Após recaída**: duas horas depois de registrar uma recaída (ou às 8h, se cair entre 22h e 8h), chega "{username}, recomeçar faz parte. Hoje é o dia 1 de novo.". O texto nunca cita o vício. Sai da diferença entre o início da contagem e `quit_at`, então é recalculado como o resto e não repete depois de enviado.
 - **Limite conhecido**: o iOS limita a 64 agendamentos (o Android, plataforma inicial, não).
 
+### Como a integração com a agenda funciona hoje
+
+- **Onde**: Perfil → "Google Agenda" ou Rotina → "Enviar para a agenda". O app pede a permissão de agenda, lista as agendas editáveis do aparelho e sugere a principal da conta Google.
+- **O que vira evento**: um evento por bloco e por dia da semana, com o título e as notas do bloco e o horário de início e fim (30 min se o bloco não tem fim).
+- **Repetir toda semana** (padrão): cada evento recebe repetição semanal. Desligado, só os dias que restam da semana atual (segunda a domingo) são enviados, e a próxima sincronização troca pela semana nova.
+- **Sincronizar de novo não duplica**: a tabela `calendar_events` liga (bloco, dia) ao evento criado, com uma assinatura do conteúdo. Mudou o bloco, o evento é trocado; apagou o bloco ou o dia, o evento é removido; evento apagado à mão na agenda é recriado; trocar de agenda move tudo.
+- **Só toca no que é do Rumo**: eventos que você criou não são lidos nem alterados. "Remover eventos do Rumo" apaga só os criados pelo app.
+- **Offline**: nada é enviado pela internet pelo app; quem leva a agenda ao Google é o sincronismo do Android.
+
 ## Modelo de dados (SQLite, `rumo.db`)
 
 | Tabela                 | Campos principais                                                                                                    |
@@ -156,6 +173,8 @@ O modo discreto troca o nome do vício por um texto genérico na tela bloqueada.
 | `weekly_goals`         | `id`, `activity`, `target_minutes`, `note`, `import_id`                                                              |
 | `app_state` (Pomodoro) | `pomodoro_on_focus_end` (`ask` ou `auto_complete`, padrão `ask`); tempos 25/5/15 e 4 ciclos são constantes no código |
 | `pomodoro_sessions`    | `id`, `started_at`, `ended_at`, `kind` (foco/pausa), `routine_block_id`, `task_id`, `activity`, `completed`          |
+| `pomodoro_active`      | `kind`, `started_at_ms`, `duration_ms`, `session_id`, `activity`, `routine_block_id`, `task_id`, `paused_at_ms`, `paused_total_ms`, `cycle_count` (uma linha só, a fase em andamento) |
+| `calendar_events`      | `block_id`, `weekday`, `calendar_id`, `event_id`, `signature` (eventos que o Rumo criou na agenda do aparelho)       |
 | `imports`              | `id`, `file_name`, `content_hash`, `imported_at`                                                                     |
 | `app_state`            | `theme_mode`, `onboarding_done`                                                                                      |
 
@@ -171,7 +190,7 @@ Dias sem ceder = agora − (última recaída ou `quit_at`). Nenhum contador é g
 | Estado            | Zustand                                                                                                                                 |
 | Formulários       | React Hook Form + Zod                                                                                                                   |
 | Notificações      | `expo-notifications` (somente locais)                                                                                                   |
-| Importar e backup | `.db` único: `expo-document-picker`, `expo-file-system`, `expo-sharing` e `expo-sqlite` (`serializeAsync` / `deserializeDatabaseAsync`) |
+| Importar e backup | `.db` único: `expo-file-system` (seletor `File.pickFileAsync`), `expo-sharing` e `expo-sqlite` (`serializeAsync` / `deserializeDatabaseAsync`) |
 | Datas             | `date-fns` com locale pt-BR                                                                                                             |
 | UI                | `StyleSheet` com design tokens, `@expo/vector-icons`, componente de toast reaproveitado do VCampos                                      |
 | Qualidade         | Biome, `tsc`, Jest + React Native Testing Library, GitHub Actions                                                                       |
@@ -193,6 +212,7 @@ src/
     profile/
     notifications/
     focus/
+    calendar/
     dataTransfer/
   app/                 rotas do Expo Router (arquivos finos que reexportam as telas)
   styles/
@@ -213,6 +233,8 @@ seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 - [x] Lembrete 10 minutos antes de cada bloco (ajustável por bloco; 0 desliga)
 - [x] Pomodoro fixo 25/5/15: temporizador, sessões gravadas no banco e opção perguntar/automático
 - [x] Aviso de fim de foco e de pausa com o app em segundo plano
+- [x] Pomodoro persistente (continua com o app fechado) e notificação com Pausar/Retomar e Encerrar
+- [x] Rotina enviada para a agenda do aparelho (Google Agenda via sincronismo do Android)
 - [x] Metas semanais de horas com progresso vindo do Pomodoro
 - [x] Conversor de `.md` em `.db` (`npm run seed:build`) com testes sobre os arquivos de `seed/`
 - [x] Importação de `.db` com pré-visualização e preenchimento automático do perfil (rotina, tarefas e metas semanais)
@@ -231,6 +253,8 @@ seed/                  Cronograma.md, Rota_de_estudos.md e rumo-seed.db
 - O nome definitivo é Rumo.
 - Acesso ao SQLite por repositories com SQL, sem ORM.
 - Navegação com Expo Router.
+- Pomodoro guardado por horário no SQLite (`pomodoro_active`), para sobreviver ao app fechado; ações da notificação mexem só no banco.
+- Google Agenda via agenda do aparelho (`expo-calendar/legacy`, a única API que funciona também no Expo Go), sem OAuth nem rede, para manter o app 100% offline.
 - Alarmes exatos via `SCHEDULE_EXACT_ALARM` com pedido guiado e degradação para horário aproximado.
 
 ## Perguntas em aberto

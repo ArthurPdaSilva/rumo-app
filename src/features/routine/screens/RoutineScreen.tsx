@@ -165,6 +165,11 @@ export function RoutineScreen() {
 							})
 						}
 					/>
+					<ActionButton
+						title="Enviar para a agenda"
+						variant="secondary"
+						onPress={() => router.push("/calendar")}
+					/>
 				</ScrollView>
 			) : null}
 

@@ -3,9 +3,10 @@ import {
 	POMODORO_CYCLES_UNTIL_LONG_BREAK,
 	POMODORO_FOCUS_MINUTES,
 	POMODORO_LONG_BREAK_MINUTES,
+	type PomodoroPhaseKind,
 } from "@/types";
 
-export type PhaseKind = "focus" | "break" | "longBreak";
+export type PhaseKind = PomodoroPhaseKind;
 
 const MINUTE_MS = 60_000;
 
@@ -39,4 +40,30 @@ export function formatClock(remainingMs: number): string {
 	const minutes = Math.floor(totalSeconds / 60);
 	const seconds = totalSeconds % 60;
 	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+/** Tempos de uma fase: o bastante para saber quando ela acaba e quanto falta. */
+export interface PhaseTiming {
+	startedAtMs: number;
+	durationMs: number;
+	/** Quando a pausa em curso começou; `null` com a fase correndo. */
+	pausedAtMs: number | null;
+	/** Soma das pausas já encerradas. */
+	pausedTotalMs: number;
+}
+
+/** Instante em que a fase acaba se continuar correndo: cada pausa empurra o fim. */
+export function phaseEndsAtMs(timing: PhaseTiming): number {
+	return timing.startedAtMs + timing.pausedTotalMs + timing.durationMs;
+}
+
+/** Tempo que falta; congelado enquanto a fase está pausada. */
+export function phaseRemainingMs(timing: PhaseTiming, nowMs: number): number {
+	const reference = timing.pausedAtMs ?? nowMs;
+	return Math.max(0, phaseEndsAtMs(timing) - reference);
+}
+
+/** Uma fase pausada nunca vence sozinha. */
+export function isPhaseExpired(timing: PhaseTiming, nowMs: number): boolean {
+	return timing.pausedAtMs === null && nowMs >= phaseEndsAtMs(timing);
 }

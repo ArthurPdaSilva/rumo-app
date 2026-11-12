@@ -160,6 +160,26 @@ export function ProfileScreen() {
 				]}
 			>
 				<Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+					Google Agenda
+				</Text>
+				<Text style={[styles.hint, { color: colors.textMuted }]}>
+					Envie os blocos da sua rotina como eventos para a agenda do aparelho,
+					que o Android sincroniza com o Google Agenda.
+				</Text>
+				<ActionButton
+					title="Abrir integração com a agenda"
+					variant="secondary"
+					onPress={() => router.push("/calendar")}
+				/>
+			</View>
+
+			<View
+				style={[
+					styles.card,
+					{ backgroundColor: colors.surface, borderColor: colors.border },
+				]}
+			>
+				<Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
 					Importar e backup
 				</Text>
 				<Text style={[styles.hint, { color: colors.textMuted }]}>

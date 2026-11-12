@@ -1,9 +1,14 @@
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import {
 	type ChannelKey,
+	type LiveNotification,
 	type PlannedNotification,
+	POMODORO_ACTION_IDS,
+	POMODORO_CATEGORY_PAUSED,
+	POMODORO_CATEGORY_RUNNING,
 	POMODORO_ID_PREFIX,
+	POMODORO_LIVE_KIND,
 } from "@/features/notifications/planner";
 
 /**
@@ -24,17 +29,27 @@ const CHANNELS: Record<ChannelKey, { name: string; importance: number }> = {
 		name: "Foco e pausas",
 		importance: Notifications.AndroidImportance.HIGH,
 	},
+	// Silencioso e sem aviso na tela: só fica na bandeja enquanto o foco corre.
+	focusLive: {
+		name: "Foco em andamento",
+		importance: Notifications.AndroidImportance.LOW,
+	},
 };
 
 export type PermissionState = "granted" | "denied" | "undetermined";
 export type ExactAlarmState = "granted" | "denied" | "unsupported";
 
-/** Com o app aberto o Pomodoro já avisa por toast; o resto aparece normalmente. */
+/**
+ * Com o app aberto o Pomodoro já avisa por toast; o resto aparece normalmente.
+ * A notificação fixa do foco divide o prefixo dos avisos, mas é exceção: ela
+ * precisa existir na bandeja para continuar lá quando o app for minimizado.
+ */
 export function configureNotifications(): void {
 	Notifications.setNotificationHandler({
 		handleNotification: async (notification) => {
-			const id = notification.request.identifier;
-			const show = !id.startsWith(POMODORO_ID_PREFIX);
+			const { identifier, content } = notification.request;
+			const isLive = content.data?.kind === POMODORO_LIVE_KIND;
+			const show = isLive || !identifier.startsWith(POMODORO_ID_PREFIX);
 			return {
 				shouldShowBanner: show,
 				shouldShowList: show,
@@ -53,6 +68,19 @@ export async function createChannels(): Promise<void> {
 			importance: channel.importance,
 		});
 	}
+}
+
+/** Botões da notificação fixa do foco. Rodam sem abrir o app. */
+export async function registerPomodoroCategories(): Promise<void> {
+	const options = { opensAppToForeground: false };
+	await Notifications.setNotificationCategoryAsync(POMODORO_CATEGORY_RUNNING, [
+		{ identifier: POMODORO_ACTION_IDS.pause, buttonTitle: "Pausar", options },
+		{ identifier: POMODORO_ACTION_IDS.stop, buttonTitle: "Encerrar", options },
+	]);
+	await Notifications.setNotificationCategoryAsync(POMODORO_CATEGORY_PAUSED, [
+		{ identifier: POMODORO_ACTION_IDS.resume, buttonTitle: "Retomar", options },
+		{ identifier: POMODORO_ACTION_IDS.stop, buttonTitle: "Encerrar", options },
+	]);
 }
 
 export async function getNotificationPermission(): Promise<PermissionState> {
@@ -128,6 +156,61 @@ export async function schedule(planned: PlannedNotification): Promise<void> {
 		},
 		trigger: toTrigger(planned),
 	});
+}
+
+/**
+ * Mostra (ou atualiza, pelo mesmo identificador) a notificação fixa do foco.
+ * `sticky` a mantém na bandeja e `autoDismiss: false` impede que tocar nela a feche.
+ */
+export async function presentLive(live: LiveNotification): Promise<void> {
+	await Notifications.scheduleNotificationAsync({
+		identifier: live.id,
+		content: {
+			title: live.title,
+			body: live.body,
+			sticky: true,
+			autoDismiss: false,
+			categoryIdentifier: live.categoryId,
+			data: { kind: POMODORO_LIVE_KIND },
+		},
+		trigger: { channelId: live.channel },
+	});
+}
+
+/** Avisa quando a pessoa toca num botão (ou na própria notificação) com o app vivo. */
+export function listenToNotificationActions(
+	listener: (actionIdentifier: string) => void,
+): () => void {
+	const subscription = Notifications.addNotificationResponseReceivedListener(
+		(response) => listener(response.actionIdentifier),
+	);
+	return () => subscription.remove();
+}
+
+/**
+ * Registra a tarefa que o sistema roda quando um botão é tocado com o app em
+ * segundo plano ou fechado. A tarefa em si é definida com o expo-task-manager.
+ */
+export async function registerNotificationTask(name: string): Promise<void> {
+	await Notifications.registerTaskAsync(name);
+}
+
+/** Lê o botão tocado do que a tarefa em segundo plano recebe; `null` se não for uma resposta. */
+export function actionIdentifierOf(payload: unknown): string | null {
+	if (typeof payload !== "object" || payload === null) return null;
+	const identifier = (payload as { actionIdentifier?: unknown })
+		.actionIdentifier;
+	return typeof identifier === "string" ? identifier : null;
+}
+
+/** Remove da bandeja as notificações com esses identificadores. */
+export async function dismissLive(ids: string[]): Promise<void> {
+	for (const id of ids) await Notifications.dismissNotificationAsync(id);
+}
+
+/** Com o app à frente o aviso de fim de fase é suprimido, então nada o substitui na bandeja. */
+export function isAppInForeground(): boolean {
+	return AppState.currentState === "active";
 }
 
 async function cancelWhere(

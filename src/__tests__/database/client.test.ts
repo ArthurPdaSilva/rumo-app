@@ -100,4 +100,60 @@ describe("migrateDatabase", () => {
 		expect(row).toEqual({ pomodoro_on_focus_end: "ask", theme_mode: "system" });
 		db.close();
 	});
+
+	test("migration 2 preserva sessões e preferências existentes", async () => {
+		const db = createTestDatabase();
+		await migrateDatabase(db, [MIGRATIONS[0]]);
+		await db.execAsync(
+			`UPDATE app_state SET pomodoro_on_focus_end = 'auto_complete' WHERE id = 1;
+			INSERT INTO pomodoro_sessions (started_at, ended_at, kind, activity, completed)
+			VALUES ('2026-11-04T10:00:00.000Z', '2026-11-04T10:25:00.000Z', 'focus', 'Música', 1);`,
+		);
+
+		const version = await migrateDatabase(db);
+
+		expect(version).toBeGreaterThanOrEqual(2);
+		const session = await db.getFirstAsync<{
+			activity: string;
+			completed: number;
+			paused_ms: number;
+		}>("SELECT activity, completed, paused_ms FROM pomodoro_sessions");
+		expect(session).toEqual({ activity: "Música", completed: 1, paused_ms: 0 });
+		const state = await db.getFirstAsync<{ pomodoro_on_focus_end: string }>(
+			"SELECT pomodoro_on_focus_end FROM app_state WHERE id = 1",
+		);
+		expect(state?.pomodoro_on_focus_end).toBe("auto_complete");
+		const active = await db.getAllAsync("SELECT * FROM pomodoro_active");
+		expect(active).toEqual([]);
+		db.close();
+	});
+
+	test("migration 3 preserva a preferência existente e começa repetindo toda semana", async () => {
+		const db = createTestDatabase();
+		await migrateDatabase(db, MIGRATIONS.slice(0, 2));
+		await db.execAsync(
+			`UPDATE app_state SET theme_mode = 'dark', onboarding_done = 1 WHERE id = 1;
+			INSERT INTO routine_blocks (weekdays, start_time, title) VALUES (2, '09:00', 'Concurso');`,
+		);
+
+		await migrateDatabase(db);
+
+		const state = await db.getFirstAsync<{
+			theme_mode: string;
+			onboarding_done: number;
+			calendar_id: string | null;
+			calendar_recurring: number;
+		}>(
+			"SELECT theme_mode, onboarding_done, calendar_id, calendar_recurring FROM app_state WHERE id = 1",
+		);
+		expect(state).toEqual({
+			theme_mode: "dark",
+			onboarding_done: 1,
+			calendar_id: null,
+			calendar_recurring: 1,
+		});
+		const blocks = await db.getAllAsync("SELECT title FROM routine_blocks");
+		expect(blocks).toEqual([{ title: "Concurso" }]);
+		db.close();
+	});
 });

@@ -1,4 +1,9 @@
 import {
+	formatClock,
+	PHASE_LABEL,
+	type PhaseKind,
+} from "@/features/focus/pomodoro";
+import {
 	breakEndMessage,
 	dailyMessage,
 	focusEndMessage,
@@ -25,7 +30,7 @@ export type NotificationKind =
 	| "pomodoroBreak";
 
 /** Cada tipo vai para um canal do Android, que o usuário pode silenciar à parte. */
-export type ChannelKey = "reminders" | "support" | "focus";
+export type ChannelKey = "reminders" | "support" | "focus" | "focusLive";
 
 export type PlannedTrigger =
 	| { type: "date"; date: Date }
@@ -42,6 +47,16 @@ export interface PlannedNotification extends Message {
 }
 
 export const POMODORO_ID_PREFIX = "pomodoro:";
+/** Valor de `data.kind` da notificação fixa do foco, que aparece mesmo com o app aberto. */
+export const POMODORO_LIVE_KIND = "pomodoroLive";
+export const POMODORO_CATEGORY_RUNNING = "pomodoro-running";
+export const POMODORO_CATEGORY_PAUSED = "pomodoro-paused";
+/** Identificadores dos botões da notificação fixa do foco. */
+export const POMODORO_ACTION_IDS = {
+	pause: "pomodoro.pause",
+	resume: "pomodoro.resume",
+	stop: "pomodoro.stop",
+} as const;
 export const MAX_MILESTONES_PER_ADDICTION = 3;
 const DAY_MS = 86_400_000;
 /** Quanto tempo depois da recaída chega a mensagem de acolhimento. */
@@ -208,27 +223,81 @@ export function planNotifications(input: PlanInput): PlannedNotification[] {
 	return planned;
 }
 
-/** Avisos do Pomodoro: fim do foco e fim da pausa seguinte. */
+/**
+ * Avisos do Pomodoro: fim do foco e fim da pausa seguinte. Com `focusEndsAt`
+ * nulo (retomar uma pausa já em curso) só o fim da pausa é agendado.
+ */
 export function planPomodoroAlerts(input: {
 	username: string;
-	focusEndsAt: number;
+	focusEndsAt: number | null;
 	breakMinutes: number;
 	breakEndsAt: number;
 }): PlannedNotification[] {
-	return [
-		{
+	const planned: PlannedNotification[] = [];
+	if (input.focusEndsAt !== null) {
+		planned.push({
 			id: `${POMODORO_ID_PREFIX}focus-end`,
 			kind: "pomodoroFocus",
 			channel: "focus",
 			...focusEndMessage(input.username, input.breakMinutes),
 			trigger: { type: "date", date: new Date(input.focusEndsAt) },
-		},
-		{
-			id: `${POMODORO_ID_PREFIX}break-end`,
-			kind: "pomodoroBreak",
-			channel: "focus",
-			...breakEndMessage(input.username),
-			trigger: { type: "date", date: new Date(input.breakEndsAt) },
-		},
-	];
+		});
+	}
+	planned.push({
+		id: `${POMODORO_ID_PREFIX}break-end`,
+		kind: "pomodoroBreak",
+		channel: "focus",
+		...breakEndMessage(input.username),
+		trigger: { type: "date", date: new Date(input.breakEndsAt) },
+	});
+	return planned;
+}
+
+/** Notificação fixa do foco: título, texto e botões conforme a fase esteja correndo ou pausada. */
+export interface LiveNotification extends Message {
+	id: string;
+	channel: ChannelKey;
+	categoryId: string;
+}
+
+export interface PomodoroLiveInput {
+	kind: PhaseKind;
+	activity: string | null;
+	paused: boolean;
+	/** Instante previsto para o fim, com a fase correndo. */
+	endsAtMs: number;
+	/** Tempo que falta, mostrado quando a fase está pausada. */
+	remainingMs: number;
+}
+
+/** Identificador compartilhado entre a notificação fixa e o aviso de fim daquela fase. */
+export function pomodoroLiveId(kind: PhaseKind): string {
+	return `${POMODORO_ID_PREFIX}${kind === "focus" ? "focus-end" : "break-end"}`;
+}
+
+function clockTime(ms: number): string {
+	const date = new Date(ms);
+	const pad = (value: number) => String(value).padStart(2, "0");
+	return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * Usa o mesmo identificador do aviso agendado do fim da fase: quando o alarme
+ * dispara, a notificação do fim substitui esta, mesmo com o app fechado, e
+ * ela não fica parada mostrando um horário que já passou.
+ */
+export function planPomodoroLive(input: PomodoroLiveInput): LiveNotification {
+	const label = PHASE_LABEL[input.kind];
+	const title = input.activity ? `${label} · ${input.activity}` : label;
+	return {
+		id: pomodoroLiveId(input.kind),
+		channel: "focusLive",
+		categoryId: input.paused
+			? POMODORO_CATEGORY_PAUSED
+			: POMODORO_CATEGORY_RUNNING,
+		title,
+		body: input.paused
+			? `Pausado · faltam ${formatClock(input.remainingMs)}`
+			: `Termina às ${clockTime(input.endsAtMs)}`,
+	};
 }

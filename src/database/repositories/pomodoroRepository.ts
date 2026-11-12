@@ -1,5 +1,5 @@
 import type { Database } from "@/database/client";
-import type { PomodoroOnFocusEnd } from "@/types";
+import type { PomodoroOnFocusEnd, PomodoroPhaseKind } from "@/types";
 
 export interface FocusSessionInput {
 	startedAt: string;
@@ -29,33 +29,116 @@ export async function startFocusSession(
 	return result.lastInsertRowId;
 }
 
+/** `pausedMs` é o tempo parado dentro da sessão, descontado dos minutos de foco. */
 export async function finishFocusSession(
 	db: Database,
 	id: number,
 	endedAt: string,
 	completed: boolean,
+	pausedMs = 0,
 ): Promise<void> {
 	await db.runAsync(
-		"UPDATE pomodoro_sessions SET ended_at = ?, completed = ? WHERE id = ?",
+		"UPDATE pomodoro_sessions SET ended_at = ?, completed = ?, paused_ms = ? WHERE id = ?",
 		endedAt,
 		completed ? 1 : 0,
+		pausedMs,
 		id,
 	);
 }
 
 /**
- * Fecha sessões que ficaram abertas (o app foi encerrado no meio do foco).
- * Elas terminam no próprio início, ou seja, não contam tempo nenhum.
+ * Fecha sessões abertas que nenhuma fase em andamento reivindica (resto de uma
+ * versão antiga ou de um banco restaurado). Elas terminam no próprio início,
+ * ou seja, não contam tempo nenhum. A sessão da fase ativa é preservada.
  */
 export async function abandonOpenSessions(db: Database): Promise<void> {
 	await db.runAsync(
-		"UPDATE pomodoro_sessions SET ended_at = started_at, completed = 0 WHERE ended_at IS NULL",
+		`UPDATE pomodoro_sessions SET ended_at = started_at, completed = 0
+		WHERE ended_at IS NULL
+			AND id NOT IN (SELECT session_id FROM pomodoro_active WHERE session_id IS NOT NULL)`,
 	);
+}
+
+/** Fase do Pomodoro em andamento, guardada para sobreviver ao app ser encerrado. */
+export interface ActivePhaseRow {
+	kind: PomodoroPhaseKind;
+	startedAtMs: number;
+	durationMs: number;
+	sessionId: number | null;
+	activity: string | null;
+	routineBlockId: number | null;
+	taskId: number | null;
+	pausedAtMs: number | null;
+	pausedTotalMs: number;
+	cycleCount: number;
+}
+
+interface ActivePhaseSqlRow {
+	kind: PomodoroPhaseKind;
+	started_at_ms: number;
+	duration_ms: number;
+	session_id: number | null;
+	activity: string | null;
+	routine_block_id: number | null;
+	task_id: number | null;
+	paused_at_ms: number | null;
+	paused_total_ms: number;
+	cycle_count: number;
+}
+
+export async function getActivePhase(
+	db: Database,
+): Promise<ActivePhaseRow | null> {
+	const row = await db.getFirstAsync<ActivePhaseSqlRow>(
+		`SELECT kind, started_at_ms, duration_ms, session_id, activity, routine_block_id,
+			task_id, paused_at_ms, paused_total_ms, cycle_count
+		FROM pomodoro_active WHERE id = 1`,
+	);
+	if (!row) return null;
+	return {
+		kind: row.kind,
+		startedAtMs: row.started_at_ms,
+		durationMs: row.duration_ms,
+		sessionId: row.session_id,
+		activity: row.activity,
+		routineBlockId: row.routine_block_id,
+		taskId: row.task_id,
+		pausedAtMs: row.paused_at_ms,
+		pausedTotalMs: row.paused_total_ms,
+		cycleCount: row.cycle_count,
+	};
+}
+
+export async function saveActivePhase(
+	db: Database,
+	phase: ActivePhaseRow,
+): Promise<void> {
+	await db.runAsync(
+		`INSERT OR REPLACE INTO pomodoro_active
+			(id, kind, started_at_ms, duration_ms, session_id, activity, routine_block_id,
+			task_id, paused_at_ms, paused_total_ms, cycle_count)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		phase.kind,
+		phase.startedAtMs,
+		phase.durationMs,
+		phase.sessionId,
+		phase.activity,
+		phase.routineBlockId,
+		phase.taskId,
+		phase.pausedAtMs,
+		phase.pausedTotalMs,
+		phase.cycleCount,
+	);
+}
+
+export async function clearActivePhase(db: Database): Promise<void> {
+	await db.runAsync("DELETE FROM pomodoro_active WHERE id = 1");
 }
 
 interface SessionRow {
 	started_at: string;
 	ended_at: string;
+	paused_ms: number;
 	activity: string | null;
 }
 
@@ -65,7 +148,7 @@ async function completedFocusIn(
 	to: Date,
 ): Promise<SessionRow[]> {
 	return db.getAllAsync<SessionRow>(
-		`SELECT started_at, ended_at, activity FROM pomodoro_sessions
+		`SELECT started_at, ended_at, paused_ms, activity FROM pomodoro_sessions
 		WHERE kind = 'focus' AND completed = 1 AND ended_at IS NOT NULL
 			AND started_at >= ? AND started_at < ?`,
 		from.toISOString(),
@@ -73,9 +156,12 @@ async function completedFocusIn(
 	);
 }
 
+/** Minutos de foco de verdade: o tempo parado em pausa não conta. */
 function minutesOf(row: SessionRow): number {
 	const ms =
-		new Date(row.ended_at).getTime() - new Date(row.started_at).getTime();
+		new Date(row.ended_at).getTime() -
+		new Date(row.started_at).getTime() -
+		row.paused_ms;
 	return Math.max(0, Math.round(ms / 60_000));
 }
 

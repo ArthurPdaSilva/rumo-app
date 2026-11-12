@@ -9,10 +9,12 @@ import { SwitchRow } from "@/components/SwitchRow";
 import { Chip } from "@/features/focus/components/Chip";
 import {
 	formatClock,
+	isPhaseExpired,
 	PHASE_LABEL,
 	phaseMinutes,
+	phaseRemainingMs,
 } from "@/features/focus/pomodoro";
-import { phaseEndsAt, useFocusStore } from "@/features/focus/stores/FocusStore";
+import { useFocusStore } from "@/features/focus/stores/FocusStore";
 import { buildTargetOptions, toTarget } from "@/features/focus/targets";
 import { getBlockStatuses } from "@/features/routine/blockStatus";
 import { useRoutineStore } from "@/features/routine/stores/RoutineStore";
@@ -64,7 +66,7 @@ export function FocusScreen() {
 
 	// O timer do store não roda com o app em segundo plano: ao voltar, fecha a fase vencida.
 	useEffect(() => {
-		if (phase && nowMs >= phaseEndsAt(phase)) {
+		if (phase && isPhaseExpired(phase, nowMs)) {
 			actions()
 				.finishPhase(db, nowMs)
 				.catch(() => notification.error("Não foi possível salvar o foco."));
@@ -100,8 +102,9 @@ export function FocusScreen() {
 		[tasks, option],
 	);
 
-	const remainingMs = phase ? phaseEndsAt(phase) - nowMs : 0;
+	const remainingMs = phase ? phaseRemainingMs(phase, nowMs) : 0;
 	const progress = phase ? 1 - remainingMs / phase.durationMs : 0;
+	const isPaused = phase?.pausedAtMs != null;
 
 	async function run(action: () => Promise<void>, error: string) {
 		try {
@@ -123,7 +126,9 @@ export function FocusScreen() {
 				]}
 			>
 				<Text style={[styles.phase, { color: colors.primary }]}>
-					{phase ? PHASE_LABEL[phase.kind] : "Pronto para focar"}
+					{phase
+						? `${PHASE_LABEL[phase.kind]}${isPaused ? " (pausado)" : ""}`
+						: "Pronto para focar"}
 				</Text>
 				<Text
 					accessibilityRole="timer"
@@ -160,19 +165,47 @@ export function FocusScreen() {
 			</View>
 
 			{phase ? (
-				phase.kind === "focus" ? (
-					<ActionButton
-						title="Cancelar foco"
-						variant="secondary"
-						onPress={() => setConfirmingCancel(true)}
-					/>
-				) : (
-					<ActionButton
-						title="Pular pausa"
-						variant="secondary"
-						onPress={() => actions().skipBreak()}
-					/>
-				)
+				<>
+					{isPaused ? (
+						<ActionButton
+							title="Retomar"
+							onPress={() =>
+								run(async () => {
+									await actions().resumePhase(db);
+									notification.success("Temporizador retomado.");
+								}, "Não foi possível retomar.")
+							}
+						/>
+					) : (
+						<ActionButton
+							title="Pausar"
+							onPress={() =>
+								run(async () => {
+									await actions().pausePhase(db);
+									notification.info("Temporizador pausado.");
+								}, "Não foi possível pausar.")
+							}
+						/>
+					)}
+					{phase.kind === "focus" ? (
+						<ActionButton
+							title="Cancelar foco"
+							variant="secondary"
+							onPress={() => setConfirmingCancel(true)}
+						/>
+					) : (
+						<ActionButton
+							title="Pular pausa"
+							variant="secondary"
+							onPress={() =>
+								run(async () => {
+									await actions().skipBreak(db);
+									notification.info("Pausa pulada.");
+								}, "Não foi possível pular a pausa.")
+							}
+						/>
+					)}
+				</>
 			) : (
 				<>
 					<Text style={[styles.heading, { color: colors.textPrimary }]}>
@@ -303,10 +336,10 @@ export function FocusScreen() {
 				onCancel={() => setConfirmingCancel(false)}
 				onConfirm={() => {
 					setConfirmingCancel(false);
-					run(
-						() => actions().cancelPhase(db),
-						"Não foi possível cancelar o foco.",
-					);
+					run(async () => {
+						await actions().cancelPhase(db);
+						notification.info("Foco cancelado.");
+					}, "Não foi possível cancelar o foco.");
 				}}
 			/>
 			<ConfirmModal

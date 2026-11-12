@@ -4,6 +4,9 @@ export const POMODORO_BREAK_MINUTES = 5;
 export const POMODORO_LONG_BREAK_MINUTES = 15;
 export const POMODORO_CYCLES_UNTIL_LONG_BREAK = 4;
 
+/** Duração do evento na agenda para um bloco sem horário de fim (em minutos). */
+export const CALENDAR_DEFAULT_EVENT_MINUTES = 30;
+
 /** Antecedência padrão do lembrete de um bloco da rotina (em minutos). */
 export const DEFAULT_REMINDER_MINUTES = 10;
 
@@ -33,6 +36,7 @@ export const ADDICTION_NAME_MIN_LENGTH = 2;
 export const ADDICTION_NAME_MAX_LENGTH = 40;
 
 export type PomodoroOnFocusEnd = "ask" | "auto_complete";
+export type PomodoroPhaseKind = "focus" | "break" | "longBreak";
 export type ThemeMode = "light" | "dark" | "system";
 
 export interface Profile {

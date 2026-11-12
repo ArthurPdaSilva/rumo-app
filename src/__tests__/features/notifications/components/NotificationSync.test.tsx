@@ -10,6 +10,7 @@ jest.mock("../../../../features/notifications/syncNotifications", () => ({
 jest.mock("../../../../features/notifications/notificationsClient", () => ({
 	configureNotifications: jest.fn(),
 	createChannels: jest.fn().mockResolvedValue(undefined),
+	registerPomodoroCategories: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe("NotificationSync", () => {

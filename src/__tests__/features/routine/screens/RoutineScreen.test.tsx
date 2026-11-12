@@ -92,6 +92,15 @@ describe("RoutineScreen", () => {
 		expect(screen.getByText("Nenhum bloco neste dia")).toBeTruthy();
 	});
 
+	test("o botão leva à tela de envio para a agenda", async () => {
+		await seed();
+		await render(<RoutineScreen />);
+
+		await fireEvent.press(await screen.findByText("Enviar para a agenda"));
+
+		expect(mockPush).toHaveBeenCalledWith("/calendar");
+	});
+
 	test("abre o bloco para editar e o formulário de novo bloco no dia escolhido", async () => {
 		await seed();
 		await render(<RoutineScreen />);

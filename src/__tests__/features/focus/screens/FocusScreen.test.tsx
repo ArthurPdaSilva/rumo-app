@@ -1,9 +1,11 @@
 import {
+	act,
 	fireEvent,
 	render,
 	screen,
 	waitFor,
 } from "@testing-library/react-native";
+import Toast from "react-native-toast-message";
 import { migrateDatabase } from "../../../../database/client";
 import { useFocusStore } from "../../../../features/focus/stores/FocusStore";
 import { FocusScreen } from "../../../../features/focus/screens/FocusScreen";
@@ -15,6 +17,9 @@ let mockDb: ReturnType<typeof createTestDatabase>;
 jest.mock("../../../../features/notifications/pomodoroAlerts", () => ({
 	schedulePomodoroAlerts: jest.fn().mockResolvedValue(undefined),
 	cancelPomodoroAlerts: jest.fn().mockResolvedValue(undefined),
+	showPomodoroLive: jest.fn().mockResolvedValue(undefined),
+	hidePomodoroLive: jest.fn().mockResolvedValue(undefined),
+	settlePomodoroLive: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("expo-sqlite", () => ({ useSQLiteContext: () => mockDb }));
 // Quarta-feira, 14:15 (horário local).
@@ -39,6 +44,7 @@ async function seed() {
 
 describe("FocusScreen", () => {
 	beforeEach(async () => {
+		(Toast.show as jest.Mock).mockClear();
 		jest.spyOn(Date, "now").mockReturnValue(NOW.getTime());
 		mockDb = createTestDatabase();
 		await migrateDatabase(mockDb);
@@ -109,6 +115,8 @@ describe("FocusScreen", () => {
 				kind: "focus",
 				startedAtMs: NOW.getTime() - 5 * 60_000,
 				durationMs: 25 * 60_000,
+				pausedAtMs: null,
+				pausedTotalMs: 0,
 				sessionId: null,
 				target: { activity: "Português", routineBlockId: null, taskId: null },
 			},
@@ -131,6 +139,8 @@ describe("FocusScreen", () => {
 				kind: "break",
 				startedAtMs: NOW.getTime(),
 				durationMs: 5 * 60_000,
+				pausedAtMs: null,
+				pausedTotalMs: 0,
 				sessionId: null,
 				target: { activity: null, routineBlockId: null, taskId: null },
 			},
@@ -156,6 +166,8 @@ describe("FocusScreen", () => {
 				kind: "focus",
 				startedAtMs: startedAt.getTime(),
 				durationMs: 25 * 60_000,
+				pausedAtMs: null,
+				pausedTotalMs: 0,
 				sessionId: id,
 				target: { activity: "Música", routineBlockId: null, taskId: null },
 			},
@@ -221,5 +233,112 @@ describe("FocusScreen", () => {
 			"SELECT pomodoro_on_focus_end AS value FROM app_state",
 		);
 		expect(row?.value).toBe("auto_complete");
+	});
+
+	test("pausar mostra o estado, avisa por toast e dá lugar a Retomar", async () => {
+		await seed();
+		await render(<FocusScreen />);
+		await waitFor(() => screen.getByText("Hoje"));
+		await act(async () => {
+			await useFocusStore
+				.getState()
+				.startFocus(
+					mockDb,
+					{ activity: "Português", routineBlockId: null, taskId: null },
+					NOW.getTime() - 5 * 60_000,
+				);
+		});
+		expect(await screen.findByText("20:00")).toBeTruthy();
+		expect(screen.getByText("Foco")).toBeTruthy();
+
+		await fireEvent.press(screen.getByText("Pausar"));
+
+		expect(await screen.findByText("Foco (pausado)")).toBeTruthy();
+		expect(screen.getByText("Retomar")).toBeTruthy();
+		expect(screen.queryByText("Pausar")).toBeNull();
+		// Pausado o relógio não anda.
+		expect(screen.getByText("20:00")).toBeTruthy();
+		expect(Toast.show).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "info", text2: "Temporizador pausado." }),
+		);
+	});
+
+	test("retomar volta a correr e avisa por toast", async () => {
+		await seed();
+		await render(<FocusScreen />);
+		await waitFor(() => screen.getByText("Hoje"));
+		await act(async () => {
+			await useFocusStore
+				.getState()
+				.startFocus(
+					mockDb,
+					{ activity: null, routineBlockId: null, taskId: null },
+					NOW.getTime() - 5 * 60_000,
+				);
+			await useFocusStore.getState().pausePhase(mockDb, NOW.getTime());
+		});
+		expect(await screen.findByText("Foco (pausado)")).toBeTruthy();
+
+		await fireEvent.press(screen.getByText("Retomar"));
+
+		expect(await screen.findByText("Pausar")).toBeTruthy();
+		expect(screen.queryByText("Foco (pausado)")).toBeNull();
+		expect(useFocusStore.getState().phase?.pausedAtMs).toBeNull();
+		expect(Toast.show).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "success",
+				text2: "Temporizador retomado.",
+			}),
+		);
+	});
+
+	test("a pausa também pode ser pausada, e pular avisa por toast", async () => {
+		await seed();
+		await render(<FocusScreen />);
+		await waitFor(() => screen.getByText("Hoje"));
+		await act(async () => {
+			useFocusStore.setState({
+				phase: {
+					kind: "break",
+					startedAtMs: NOW.getTime(),
+					durationMs: 5 * 60_000,
+					pausedAtMs: null,
+					pausedTotalMs: 0,
+					sessionId: null,
+					target: { activity: null, routineBlockId: null, taskId: null },
+				},
+			});
+		});
+		expect(await screen.findByText("Pausar")).toBeTruthy();
+
+		await fireEvent.press(screen.getByText("Pular pausa"));
+
+		await waitFor(() => expect(useFocusStore.getState().phase).toBeNull());
+		expect(Toast.show).toHaveBeenCalledWith(
+			expect.objectContaining({ type: "info", text2: "Pausa pulada." }),
+		);
+	});
+
+	test("cancelar o foco avisa por toast", async () => {
+		await seed();
+		await render(<FocusScreen />);
+		await waitFor(() => screen.getByText("Hoje"));
+		await act(async () => {
+			await useFocusStore
+				.getState()
+				.startFocus(
+					mockDb,
+					{ activity: null, routineBlockId: null, taskId: null },
+					NOW.getTime(),
+				);
+		});
+		await fireEvent.press(await screen.findByText("Cancelar foco"));
+		await fireEvent.press(screen.getAllByText("Cancelar foco")[1]);
+
+		await waitFor(() =>
+			expect(Toast.show).toHaveBeenCalledWith(
+				expect.objectContaining({ type: "info", text2: "Foco cancelado." }),
+			),
+		);
 	});
 });

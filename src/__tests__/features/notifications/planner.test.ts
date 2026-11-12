@@ -3,6 +3,8 @@ import {
 	MAX_MILESTONES_PER_ADDICTION,
 	planNotifications,
 	planPomodoroAlerts,
+	planPomodoroLive,
+	pomodoroLiveId,
 } from "../../../features/notifications/planner";
 import type { Addiction, Profile, RoutineBlock } from "../../../types";
 
@@ -231,5 +233,83 @@ describe("planPomodoroAlerts", () => {
 		expect(items[0]?.trigger).toEqual({ type: "date", date: new Date(1000) });
 		expect(items[0]?.body).toBe("Foco concluído, Arthur! Pausa de 5 minutos.");
 		expect(items[1]?.channel).toBe("focus");
+	});
+});
+
+describe("planPomodoroAlerts sem fim de foco", () => {
+	test("retomar uma pausa em curso agenda só o fim da pausa", () => {
+		const items = planPomodoroAlerts({
+			username: "Arthur",
+			focusEndsAt: null,
+			breakMinutes: 0,
+			breakEndsAt: 2000,
+		});
+		expect(items.map((item) => item.id)).toEqual(["pomodoro:break-end"]);
+	});
+});
+
+describe("planPomodoroLive", () => {
+	const endsAtMs = new Date(2026, 10, 4, 14, 25).getTime();
+
+	test("foco correndo: mostra a atividade, o horário de fim e Pausar", () => {
+		const live = planPomodoroLive({
+			kind: "focus",
+			activity: "Português",
+			paused: false,
+			endsAtMs,
+			remainingMs: 0,
+		});
+		expect(live).toMatchObject({
+			title: "Foco · Português",
+			body: "Termina às 14:25",
+			channel: "focusLive",
+			categoryId: "pomodoro-running",
+		});
+	});
+
+	test("pausado: mostra o tempo que falta e troca Pausar por Retomar", () => {
+		const live = planPomodoroLive({
+			kind: "focus",
+			activity: null,
+			paused: true,
+			endsAtMs,
+			remainingMs: 12 * 60_000 + 34_000,
+		});
+		expect(live).toMatchObject({
+			title: "Foco",
+			body: "Pausado · faltam 12:34",
+			categoryId: "pomodoro-paused",
+		});
+	});
+
+	test("divide o identificador com o aviso de fim da fase, para ele substituí-la", () => {
+		expect(pomodoroLiveId("focus")).toBe("pomodoro:focus-end");
+		expect(pomodoroLiveId("break")).toBe("pomodoro:break-end");
+		expect(pomodoroLiveId("longBreak")).toBe("pomodoro:break-end");
+		const alerts = planPomodoroAlerts({
+			username: "A",
+			focusEndsAt: 1,
+			breakMinutes: 5,
+			breakEndsAt: 2,
+		});
+		const live = planPomodoroLive({
+			kind: "focus",
+			activity: null,
+			paused: false,
+			endsAtMs,
+			remainingMs: 0,
+		});
+		expect(alerts.map((item) => item.id)).toContain(live.id);
+	});
+
+	test("pausa longa aparece com o próprio nome", () => {
+		const live = planPomodoroLive({
+			kind: "longBreak",
+			activity: null,
+			paused: false,
+			endsAtMs,
+			remainingMs: 0,
+		});
+		expect(live.title).toBe("Pausa longa");
 	});
 });
