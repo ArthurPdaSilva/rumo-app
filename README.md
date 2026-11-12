@@ -16,6 +16,14 @@ npm run android                         # development build no aparelho ou emula
 
 O app usa módulos nativos (SQLite e notificações), então roda em development build, não no Expo Go.
 
+Para abrir no celular com o servidor em túnel, instale o development build uma vez e use:
+
+```bash
+npx expo start --dev-client --tunnel
+```
+
+O QR code deve ser lido **de dentro do app Rumo (dev build)** ou do Expo Go, nunca pela câmera/Google Lens: o link `exp+rumo://` / `exp://` aberto no Chrome fica carregando para sempre, porque o navegador não sabe abrir o bundle.
+
 ## Escopo da primeira versão
 
 ### 1. Perfil
@@ -281,4 +289,4 @@ A licença do projeto ainda será definida.
 
 ## Ícone do app
 
-Letra **R** em branco, com a perna em turquoise terminando em seta para a direita ("seguir em frente"), sobre gradiente teal (`#14938A` → `#0B5A55`) e acento `#2DD4BF`. Os arquivos em `assets/images/` são `icon`, `android-icon-{foreground,background,monochrome}`, `splash-icon` e `favicon`. O adaptive icon usa fundo `#0F766E`; o ícone temático (monochrome) é o R em silhueta. Para ver o ícone novo é preciso gerar um novo development build (`npm run android`).
+Letra **R** em branco, com a perna em turquoise terminando em seta para a direita ("seguir em frente"), sobre gradiente teal (`#14938A` → `#0B5A55`) e acento `#2DD4BF`. Os arquivos em `assets/images/` são `icon`, `android-icon-{foreground,background,monochrome}`, `splash-icon` e `favicon`. O adaptive icon usa fundo `#0F766E`; o ícone temático (monochrome) é o R em silhueta. No foreground e no monochrome o R ocupa cerca de 46% da altura do canvas, dentro da zona segura do Android (66 dp de 108 dp), para não ser cortado pela máscara do launcher. Como a pasta `android/` é gerada, para ver o ícone novo é preciso regenerá-la (`npx expo prebuild --clean --platform android`) e gerar um novo development build (`npm run android`).
